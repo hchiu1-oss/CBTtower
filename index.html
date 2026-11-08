@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Stan 心智大樓</title>
+<title>心智大逃脫</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&family=Share+Tech+Mono&display=swap">
 <style>
@@ -294,9 +294,23 @@ img{max-width:100%}
 .awname{font-family:var(--f-title);font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--amber);text-shadow:0 0 24px rgba(244,185,66,.45)}
 .awwho{font-family:var(--f-led);font-size:clamp(1.6rem,4vw,2.6rem);color:var(--text);letter-spacing:.08em}
 .awstat{font-size:clamp(1.1rem,2.4vw,1.5rem);margin:0;color:var(--text)}
-.showimg{max-height:min(70vh,640px);max-width:100%;justify-self:center;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.showimg{width:min(100%,560px);height:auto;object-fit:contain;max-height:min(70vh,640px);max-width:100%;justify-self:center;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
 .showbar{display:flex;gap:12px;justify-content:center;position:relative;z-index:1}
 @media (max-width:760px){.showcard{grid-template-columns:minmax(0,1fr);gap:16px}.showimg{max-height:40vh}}
+
+.rules{background:var(--wall);border:1px solid var(--line);border-radius:8px;padding:18px 18px 8px;display:grid;gap:12px}
+.rules h2{font-family:var(--f-title);font-size:1.4rem;color:var(--amber)}
+.rules h3{font-family:var(--f-led);font-size:.82rem;letter-spacing:.14em;color:var(--amber);margin-bottom:4px}
+.rules p,.rules ul,.rules ol{margin:0}
+.rules ul,.rules ol{padding-left:1.3em;display:grid;gap:4px}
+.rules b{color:var(--led)}
+.rules.big{display:block;columns:2;column-gap:40px;width:min(1180px,100%);margin:0 auto;padding:12px 24px;font-size:clamp(.95rem,1.35vw,1.2rem);background:transparent;border:0}
+.rules.big section{break-inside:avoid;margin-bottom:16px}
+.rules.big h2{column-span:all;font-size:clamp(1.8rem,3.4vw,2.8rem);text-align:center;margin-bottom:16px}
+.rules.big h3{font-size:clamp(.9rem,1.3vw,1.1rem)}
+.rulesshow{grid-template-rows:minmax(0,1fr) auto}
+.rulesscroll{overflow:auto;min-height:0;position:relative;z-index:1}
+@media (max-width:760px){.rules.big{columns:1;padding:8px}}
 </style>
 </head>
 <body>
@@ -462,7 +476,7 @@ const IDS=x=>Array.isArray(x)?x.filter(v=>typeof v==='string'&&v.length<24).slic
 const NUMS=(x,max)=>Array.isArray(x)?x.map(v=>Math.max(0,Math.min(max,Math.round(+v||0)))).slice(0,10):[];
 function packState(){const p=T.pen;return{rev:T.rev||0,cr:T.createdAt||0,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,
  pen:p?[p.phase,p.pre,p.pred,p.post,p.act,p.surprise?1:0,p.lv]:null,toilet:T.toilet.slice(-8).map(x=>[x.pre,x.post,x.lv||0]),
- sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),zs:T.zs||0,hit:T.hit||0,
+ sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),zs:T.zs||0,hit:T.hit||0,wa:T.wa||0,
  ap:(T.applied||[]).slice(-10),ss:(T.surSeen||[]).slice(-3),
  s1:Object.keys(T.s1.placed),s2:[T.s2.pins,T.s2.done?1:0],s3:T.s3.asked,s4:[T.s4.d,T.s4.open?1:0],s5:[T.s5.flip,T.s5.wrong]};}
 function adoptState(st){
@@ -473,7 +487,7 @@ function adoptState(st){
  if(T.locked&&!T.pen)T.locked=false;
  T.toilet=Array.isArray(st.toilet)?st.toilet.filter(Array.isArray).slice(-8).map(x=>({pre:n(x[0],0,100),post:n(x[1],0,100),lv:n(x[2],0,5)})):[];
  T.startedAt=+st.sa||0;T.finishedAt=+st.fa||0;T.streak=n(st.sk,0,2);T.charges=n(st.ch,0,2);T.sur=n(st.sur,0,2);T.hush=n(st.hu,0,1);T.meme=n(st.me,0,1);T.nd=n(st.nd,0,1);T.auth=n(st.au,0,1);
- mergeRoster(st.rs);T.zs=Math.max(T.zs||0,n(st.zs,0,999));T.hit=Math.max(T.hit||0,n(st.hit,0,999));
+ mergeRoster(st.rs);T.zs=Math.max(T.zs||0,n(st.zs,0,999));T.hit=Math.max(T.hit||0,n(st.hit,0,999));T.wa=Math.max(T.wa||0,n(st.wa,0,999));
  T.applied=[...new Set((T.applied||[]).concat(IDS(st.ap)))].slice(-20);T.surSeen=[...new Set((T.surSeen||[]).concat(IDS(st.ss)))].slice(-5);
  if(+st.cr)T.createdAt=Math.min(T.createdAt||Infinity,+st.cr);
  const placed={};IDS(st.s1).forEach(id=>{if(CARDS.some(c=>c.id===id))placed[id]=true;});T.s1.placed=placed;
@@ -482,23 +496,31 @@ function adoptState(st){
  const s4=Array.isArray(st.s4)?st.s4:[];const d=NUMS(s4[0],2);T.s4.d=[d[0]||0,d[1]||0,d[2]||0];T.s4.open=!!s4[1];
  const s5=Array.isArray(st.s5)?st.s5:[];T.s5.flip=NUMS(s5[0],STR.length-1).slice(0,2);T.s5.wrong=NUMS(s5[1],EXP.length-1);
 }
+let CT=ls.get('tower-ct',null);
+const ctSeen=()=>ls.get('tower-ct-seen',[]);
+function saveCT(){ls.set('tower-ct',CT);pushTeam();}
+function ctPres(){return CT&&CT.id?[CT.id,CT.pre,CT.post,CT.phase>=1?1:0,CT.done?1:0,(T&&T.my&&T.my.n)||ls.get('tower-my-name','')||'']:null;}
+const ctActive=()=>!!(CT&&CT.id&&!CT.closed);
 function pushTeam(){
  if(mode()==='host')return;
- if(!T){netSet({role:'lobby'});return;}
+ if(!T){netSet({role:'lobby',ct:ctPres()});return;}
  netSet({role:'team',team:T.team,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,bonus:(T.pen&&T.pen.surprise)?1:0,sa:T.startedAt||0,fa:T.finishedAt||0,
-  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),me:T.my?[T.my.id,T.my.n,T.my.t]:null,st:packState()});
+  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),me:T.my?[T.my.id,T.my.n,T.my.t]:null,ct:ctPres(),st:packState()});
 }
-function good(){T.streak=(T.streak||0)+1;if(T.streak>=3){T.streak=0;if((T.charges||0)<2){T.charges=(T.charges||0)+1;showToast('good','連續答對 3 題！拿到一個警報遙控器，點上方紅色按鈕，選一組按下他們的警報燈');}}}
+function good(){T.streak=(T.streak||0)+1;if(T.streak>=3){T.streak=0;if((T.charges||0)<2){T.charges=(T.charges||0)+1;showToast('good','連續答對 3 題！拿到一顆警報手榴彈！點上方紅色「手榴彈」，選一組丟過去，讓他們亮一盞警報燈');}}}
 function triggerTask(surprise){
  if(doneCount()>=members()){T.meme=1;T.locked=false;T.pen=null;return;}
  T.locked=true;T.pen={phase:0,pre:70,pred:'',post:30,act:'',surprise:!!surprise,lv:Math.min(doneCount(),LEVELS.length-1)};
 }
-function strike(){T.streak=0;T.strikes++;if(T.strikes>=3){T.strikes=3;triggerTask(false);sfx.alarm();}else sfx.bad();}
+function strike(z){if(!z)T.wa=(T.wa||0)+1;T.streak=0;T.strikes++;if(T.strikes>=3){T.strikes=3;triggerTask(false);sfx.alarm();}else sfx.bad();}
 
 function onTeamNet(){
  const peers=net.peers;const o={},counts={};let changed=false,adopted=false,lob=0,rosterCh=false;
  const host=peers.find(p=>(p.presence||{}).role==='host');
  const hp=host?host.presence:null;
+ if(hp&&+hp.dur>0)hostDur=Math.min(120,+hp.dur);
+ if(hp&&typeof hp.ct==='string'&&hp.ct.length<24&&!ctSeen().includes(hp.ct)&&!(CT&&CT.id===hp.ct)){
+  ls.set('tower-ct-seen',ctSeen().concat(hp.ct).slice(-5));CT={id:hp.ct,phase:-1,pre:70,pred:'',post:30,act:'',done:0,closed:0};zapOpen=false;showFile=false;showRules=false;sfx.open();saveCT();renderTeam();window.scrollTo(0,0);return;}
  const hn=hp?Math.max(2,Math.min(8,+hp.n||0)):0;if(hn&&hn!==hostN){hostN=hn;if(!T)changed=false,renderTeam();}
  if(hp&&+hp.mem>=2&&+hp.mem<=6&&+hp.mem!==hostMem){hostMem=+hp.mem;ls.set('tower-mem',hostMem);changed=!!T;}
  if(T&&hp&&typeof hp.resetId==='string'&&(+hp.resetAt||0)>(T.createdAt||0)){
@@ -515,7 +537,7 @@ function onTeamNet(){
   (Array.isArray(pr.zaps)?pr.zaps:[]).forEach(z=>{if(!z||+z.to!==T.team||typeof z.id!=='string'||z.id.length>24)return;if((T.applied||[]).includes(z.id))return;if((+z.t||0)<(T.createdAt||0))return;
    T.applied=(T.applied||[]).concat(z.id).slice(-20);changed=true;
    T.hit=(T.hit||0)+1;
-   if(T.stage>=1&&T.stage<=5&&!T.locked&&!T.sur&&!T.meme&&!T.hush){strike();showToast('bad','第 '+n+' 組按下了你們的警報燈！');}});});
+   if(T.stage>=1&&T.stage<=5&&!T.locked&&!T.sur&&!T.meme&&!T.hush){strike(1);showToast('bad','被第 '+n+' 組丟了手榴彈！亮一盞警報燈');}});});
  if(T&&hp&&typeof hp.surprise==='string'&&hp.surprise.length<24&&!(T.surSeen||[]).includes(hp.surprise)&&(+hp.surpriseAt||0)>=(T.createdAt||0)){
   T.surSeen=(T.surSeen||[]).concat(hp.surprise).slice(-5);changed=true;
   if(T.stage>=1&&!T.locked&&!T.meme&&(hp.surpriseAll||!(T.toilet&&T.toilet.length))){T.sur=1;zapOpen=false;sfx.open();}}
@@ -528,7 +550,7 @@ function onTeamNet(){
 function syncText(){return sameCount>1?'同組 '+sameCount+' 台裝置同步中':'只有這台裝置';}
 function zapTeam(n){if(!T||!(T.charges>0))return;const v=others[n];if(!v||v.stage<1||v.stage>5||v.locked)return;
  T.charges--;T.zs=(T.zs||0)+1;const z={to:n,id:T.team+Date.now().toString(36).slice(-6)+Math.random().toString(36).slice(2,4),t:Date.now()};
- T.zaps=(T.zaps||[]).concat(z).slice(-5);zapOpen=false;sfx.alarm();saveT();renderLift();showToast('good','已按下第 '+n+' 組的警報燈');}
+ T.zaps=(T.zaps||[]).concat(z).slice(-5);zapOpen=false;sfx.alarm();saveT();renderLift();showToast('good','命中！第 '+n+' 組亮了一盞警報燈');}
 
 /* ================= team rendering ================= */
 function renderLift(){
@@ -539,26 +561,28 @@ function renderLift(){
  $('#lift').innerHTML=`<div class="lift"><div class="in"><div class="floor" aria-label="目前樓層">${FLOOR[T.stage]}</div>
   <div class="liftname"><b>第 ${T.team} 組</b><span>${esc(STAGES[T.stage])}</span></div>
   <div class="alarms" aria-label="警報燈 ${T.locked?3:T.strikes} / 3"><small>ALARM</small>${al}</div>
-  <button class="remote ${zapOk?'ready':''}" data-a="zap" ${zapOk?'':'disabled'} aria-expanded="${zapOpen}">遙控器 ×${T.charges||0}</button>
+  <button class="remote ${zapOk?'ready':''}" data-a="zap" ${zapOk?'':'disabled'} aria-expanded="${zapOpen}">手榴彈 ×${T.charges||0}</button>
   <button class="iconbtn" data-a="file">個案檔案</button>
+  <button class="iconbtn" data-a="rules">遊戲規則</button>
   <button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button>
   <button class="iconbtn" data-a="mute">${muted?'音效：關':'音效：開'}</button></div>
   <div class="in" style="padding-block:0 8px"><div class="shaft" style="flex:1">${sh}</div><div class="streak" aria-label="連續答對 ${T.streak||0} / 3">連對 ${[0,1,2].map(i=>`<i class="${i<(T.streak||0)?'on':''}"></i>`).join('')}</div></div>
   ${zapOpen?zapPanel():''}</div>`;
 }
-function liftMini(){return`<div class="lift"><div class="in"><div class="liftname"><b>第 ${T.team} 組</b><span>STAN TOWER</span></div><div class="alarms"><button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button></div></div></div>`;}
+function liftMini(){return`<div class="lift"><div class="in"><div class="liftname"><b>第 ${T.team} 組</b><span>心智大逃脫</span></div><div class="alarms"><button class="iconbtn" data-a="rules">遊戲規則</button><button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button></div></div></div>`;}
 function zapPanel(){
  const ns=Object.keys(others).map(Number).sort((a,b)=>a-b);
  const btns=ns.map(n=>{const v=others[n];const ok=v.stage>=1&&v.stage<=5&&!v.locked;
   const lab=v.locked?'任務中':v.stage>=6?'已逃脫':v.stage===0?'未開始':FLOOR[v.stage];
   return`<button data-a="zapt" data-n="${n}" ${ok?'':'disabled'}>第 ${n} 組 · ${lab}</button>`}).join('');
- return`<div class="zappanel"><div class="in"><b style="color:var(--led)">要按下哪一組的警報燈？</b>${btns?`<div class="zapgrid">${btns}</div>`:'<span class="hint">目前沒有其他組在線上。</span>'}<span class="hint">只列出已連線的組別。對方會亮一盞警報燈，三盞全亮就要做驚喜任務。</span><button class="iconbtn" data-a="zap" style="justify-self:start">收起</button></div></div>`;
+ return`<div class="zappanel"><div class="in"><b style="color:var(--led)">手榴彈要丟哪一組？</b>${btns?`<div class="zapgrid">${btns}</div>`:'<span class="hint">目前沒有其他組在線上。</span>'}<span class="hint">只列出已連線的組別。對方會亮一盞警報燈，三盞全亮就要做驚喜任務。</span><button class="iconbtn" data-a="zap" style="justify-self:start">收起</button></div></div>`;
 }
 function renderLobby(){
+ if(ctActive()){$('#lift').innerHTML='';$('#app').innerHTML=sClass();return;}
  $('#lift').innerHTML='';
  const needRoom=net.mode==='mqtt'&&!ROOM;
- $('#app').innerHTML=`<section class="stage"><div class="eyebrow">STAN TOWER · CASE #07</div>
-  <h1>Stan 心智大樓</h1>
+ $('#app').innerHTML=`<section class="stage"><div class="eyebrow">MIND ESCAPE · CASE #07</div>
+  <h1>心智大逃脫</h1>
   <p class="story">深夜十一點。個案 Stan 的檔案被鎖在他的心智大樓裡，主治諮商師只留下一句話：<b>「越往下，越難觸及。」</b>你們要一層一層往下，把他的個案概念化拼完整，才能從出口離開。</p>
   ${needRoom?`<form id="roomf" class="fld"><label for="roomcode">輸入大螢幕上的房間代碼</label><div class="row"><input id="roomcode" class="codein" maxlength="8" autocomplete="off" autocapitalize="characters" inputmode="latin"><button class="btn green">進入</button></div></form>`
   :`<h2 style="font-size:1.1rem">你們是第幾組？</h2>
@@ -567,6 +591,14 @@ function renderLobby(){
 </section>`;
  const f=$('#roomf');if(f)f.addEventListener('submit',e=>{e.preventDefault();const v=($('#roomcode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(v.length<3){showToast('bad','代碼至少 3 個字');return;}setRoom(v);startMqtt();renderLobby();});
 }
+let hostDur=0,showRules=false;
+function rulesHTML(big){const dur=mode()==='host'?H.dur:hostDur;
+ return`<article class="rules ${big?'big':''}" aria-label="遊戲規則"><h2>心智大逃脫・遊戲規則</h2>
+ <section><h3>目標</h3><p>一層一層往下，拼出 Stan 的個案概念化，逃出大樓。</p></section>
+ <section><h3>開始</h3><ul><li>全組報到 → 按「大家都到了」→ 輸入通行碼。</li><li>一人操作、大家討論，全組手機會同步。</li></ul></section>
+ <section><h3>闖關</h3><ul><li>1F → B1 → B2 → B3 → 出口，答對就往下一層。</li><li>忘了 Stan 的資料？按上方「個案檔案」。</li><li>${dur?'限時 '+dur+' 分鐘，':''}最快逃出的組有獎！</li></ul></section>
+ <section><h3>驚喜任務</h3><ul><li>每層 3 盞警報燈，答錯亮 1 盞；<b>全亮就封鎖</b>，做完驚喜任務才能繼續。</li><li>照報到順序輪 1 人，帶手機去做；做前寫預測，回來填感受。不想做可換下一位。</li><li><b>保密！</b>不給別組看、不告訴別組，回座位表情自然。</li></ul></section>
+ <section><h3>警報手榴彈</h3><ul><li>連對 3 題得 1 顆（最多 2 顆）；答錯就重新累積連對。</li><li>按上方紅色「手榴彈」選一組丟過去，<b>對方直接亮 1 盞警報燈</b>。</li><li>剛好讓別組 3 盞全亮，他們就得去做驚喜任務！</li></ul></section></article>`;}
 function stageHead(eb,title,story){return`<div class="eyebrow">${eb}</div><h1>${title}</h1><p class="story">${story}</p>`;}
 function caseFile(){return`<article class="file" aria-label="Stan 的個案檔案"><span class="stamp">CONFIDENTIAL</span>
  <h2>個案檔案 #07：Stan</h2>
@@ -590,10 +622,11 @@ function sNames(){
  const ros=rosterSorted();
  return`<section class="stage">${stageHead('STEP 1 · 報到',`第 ${T.team} 組的組員`,'等組員都用自己的手機報到後，任何一個人按「大家都到了」就可以開始。驚喜任務會照下面的順序輪流。')}
   <div class="ladder">${ros.map((e,i)=>`<div class="${e[0]===MYID?'now':''}"><i>${i+1}</i>${esc(e[1])}${e[0]===MYID?'（你）':''}</div>`).join('')}</div>
-  <div class="row"><button class="btn green" data-a="ready">大家都到了，下一步</button><span class="hint">目前 ${ros.length} 人・${syncText()}</span></div></section>`;
+  <div class="row"><button class="btn green" data-a="ready">大家都到了，下一步</button><span class="hint">目前 ${ros.length} 人・${syncText()}</span></div>
+  <p class="hint" style="margin:0">等組員報到的時候，先看一下遊戲規則：</p>${rulesHTML(false)}</section>`;
 }
 function sLogin(){
- const lines=['STAN TOWER SECURITY v7.0','個案編號 #07 ── 狀態：概念化未完成','主治諮商師留言：「越往下，越難觸及。找到他怎麼看自己，地下室的保險箱就會打開。」','<span class="warn">警告：每層樓有三盞警報燈。三盞全亮，整組封鎖，必須完成神秘的【驚喜任務】才能解除。</span>','連續答對 3 題可以拿到【警報遙控器】，按下別組的警報燈。答錯一題，連對就歸零。','輸入通行碼以啟動電梯。','提示：影響情緒的不是事件本身，而是我們對事件的＿＿＿'];
+ const lines=['MIND ESCAPE SECURITY v7.0','個案編號 #07 ── 狀態：概念化未完成','主治諮商師留言：「越往下，越難觸及。找到他怎麼看自己，地下室的保險箱就會打開。」','<span class="warn">警告：每層樓有三盞警報燈。三盞全亮，整組封鎖，必須完成神秘的【驚喜任務】才能解除。</span>','連續答對 3 題可以拿到【警報手榴彈】，丟向別組讓他們亮一盞警報燈。答錯一題，連對就歸零。','輸入通行碼以啟動電梯。','提示：影響情緒的不是事件本身，而是我們對事件的＿＿＿'];
  const d=T.login.err?0:.4;
  return`<section class="stage"><div class="crt">${lines.map((l,i)=>`<p style="animation-delay:${i*d}s">&gt; ${l}</p>`).join('')}
   <form id="loginf" style="margin-top:14px;animation:appear .01s ${lines.length*d}s backwards"><label for="pw">&gt; 通行碼：</label> <input id="pw" autocomplete="off" autocapitalize="off"> <button class="btn green" style="margin-left:8px;padding:6px 14px">ENTER</button>
@@ -681,7 +714,7 @@ function sHush(){const k=doneCount();const next=k<members()?memberName(k):'';
  return`<section class="stage"><div class="win" style="border-color:var(--exit);background:radial-gradient(circle at 50% 0%,rgba(63,210,122,.18),transparent 65%)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div>
   <div class="reveal-big">噓……<br>任務完成</div>
   <img class="meme-img" src="${memeSrc(k-1)}" alt="梗圖" style="max-width:min(320px,80vw);max-height:48vh;object-fit:contain;border-radius:8px">
-  <p class="story">回到座位時表情自然一點，<b>不要告訴別組</b>你們剛剛做了什麼。<br>接下來趕快連續答對 3 題拿到遙控器，把同樣的「驚喜」偷偷送給別組！${next?`<br>下一次輪到：<b>${esc(next)}</b>`:''}</p>
+  <p class="story">回到座位時表情自然一點，<b>不要告訴別組</b>你們剛剛做了什麼。<br>接下來趕快連續答對 3 題拿到警報手榴彈，把同樣的「驚喜」偷偷送給別組！${next?`<br>下一次輪到：<b>${esc(next)}</b>`:''}</p>
   <button class="btn green" data-a="hushok">知道了，繼續闖關</button></div></section>`;}
 function ladder(cur){return`<div class="ladder" aria-label="任務等級">${LEVELS.map((L,i)=>`<div class="${i<cur?'done':i===cur?'now':''}"><i>LV.${i+1}</i>${esc(L.t)}</div>`).join('')}</div>`;}
 function sLock(){
@@ -700,11 +733,35 @@ function sLock(){
   ${ladder(p.lv||0)}
   ${p.phase===0?step0:step1}</div></section>`;
 }
+function sClass(){
+ const c=CT;
+ if(c.phase===-1)return`<section class="stage"><div class="win">${confetti()}<div class="eyebrow">FINAL SURPRISE</div><h1>全班大驚喜！</h1>
+  <p class="story">遊戲結束前，諮商師要送<b>每一個人</b>一份禮物。這次不分組，每個人都要自己完成。</p>
+  <button class="gift" data-a="ct1" aria-label="打開禮物"><span>點我打開</span></button><div style="height:1.6em"></div></div></section>`;
+ if(c.done)return`<section class="stage"><div class="win" style="border-color:var(--exit)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div><div class="reveal-big">完成了！</div>
+  <img class="meme-img" src="${memeSrc(Math.floor(Math.random()*4))}" alt="梗圖" style="max-width:min(300px,80vw);max-height:45vh;object-fit:contain;border-radius:8px">
+  <p class="story">你預測 <b>${c.pre}</b> 分，實際是 <b>${c.post}</b> 分。等一下看看全班的結果！</p>
+  <button class="btn green" data-a="ctclose">回到遊戲</button></div></section>`;
+ const step0=`<div class="fld"><label for="ctpre">摸之前：你有多抗拒？（0–100）</label><div class="rng"><input type="range" id="ctpre" min="0" max="100" step="5" value="${c.pre}" data-a="ctr" data-k="pre"><output>${c.pre}</output></div></div>
+  <div class="fld"><label for="ctpred">你預測，摸了會怎樣？</label><select class="sel" id="ctpred" data-a="cts" data-k="pred"><option value="">選一個預測</option>${PRED.map(x=>`<option ${c.pred===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+  <div class="row"><button class="btn red" data-a="ctgo" ${c.pred?'':'disabled'}>預測完成，出發</button></div>`;
+ const step1=`<div class="msg bad">去摸一下馬桶，然後洗手。回來再填下面。</div>
+  <div class="fld"><label for="ctpost">摸完之後，實際感受有多不舒服？</label><div class="rng"><input type="range" id="ctpost" min="0" max="100" step="5" value="${c.post}" data-a="ctr" data-k="post"><output>${c.post}</output></div></div>
+  <div class="fld"><label for="ctact">實際發生了什麼？</label><select class="sel" id="ctact" data-a="cts" data-k="act"><option value="">選一個</option>${ACT.map(x=>`<option ${c.act===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+  <div class="row"><button class="btn green" data-a="ctdone" ${c.act?'':'disabled'}>回報結果</button></div>`;
+ return`<section class="stage"><div class="lock bonus"><div class="eyebrow">FINAL SURPRISE · 每個人都要做</div><h1 style="color:var(--amber)">全班驚喜任務</h1>
+  <p class="who">任務：<b>每個人都去摸一下馬桶</b></p>
+  <p class="story">先用<b>自己的手機</b>寫下你自己的預測，再去做，回來比對。不想摸的人可以不摸，按下面的「我選擇不參加」就好。</p>
+  ${c.phase===0?step0:step1}
+  <div class="row"><button class="btn ghost" data-a="ctskip">我選擇不參加</button></div></div></section>`;
+}
 function renderTeam(){
+ if(ctActive()){$('#lift').innerHTML='';$('#app').innerHTML=sClass();const mi=$('.meme-img');if(mi)mi.addEventListener('error',()=>mi.remove());return;}
  if(!T){renderLobby();return;}
  renderLift();
  let h;
  if(!T.my)h=sMyName();
+ else if(showRules)h=`<section class="stage">${rulesHTML(false)}<div class="row"><button class="btn green" data-a="rules">關閉規則，回到遊戲</button></div></section>`;
  else if(showFile)h=`<section class="stage">${caseFile()}<div class="row"><button class="btn green" data-a="file">關閉檔案，回到遊戲</button></div></section>`;
  else if(T.hush)h=sHush();
  else if(T.sur)h=sSurprise();
@@ -736,7 +793,7 @@ const HKEY='tower-host-v2';
 let H=ls.get(HKEY,{n:5,mem:4,teams:{},manual:{},dur:40,start:0,paused:0,reveal:false,confirm:false});
 let feed=[],surConfirm=false,devTotal=0,devTeam={},devLobby=0;
 function saveH(){ls.set(HKEY,H);}
-function hostPresence(){if(mode()!=='host')return;netSet({role:'host',n:H.n||5,mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
+function hostPresence(){if(mode()!=='host')return;netSet({role:'host',n:H.n||5,dur:H.dur||40,mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,ct:H.ct||null,ctAt:H.ctAt||0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
 function absorb(peers){
  const best={};devTeam={};devLobby=0;devTotal=0;
  peers.forEach(p=>{if(p.isMe)return;const pr=p.presence||{};
@@ -748,8 +805,11 @@ function absorb(peers){
  const seen={};feed=fd.filter(z=>seen[z.id]?0:(seen[z.id]=1)).sort((a,b)=>b.t-a.t).slice(0,4);
  Object.keys(H.teams).forEach(k=>{H.teams[k].online=false;});
  Object.entries(best).forEach(([n,pr])=>{H.teams[n]={stage:Math.min(6,Math.max(0,+pr.stage||0)),strikes:+pr.strikes||0,locked:!!pr.locked,startedAt:+pr.sa||0,finishedAt:+pr.fa||0,
-   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,mem:(pr.st&&Array.isArray(pr.st.rs))?Math.min(8,pr.st.rs.length):0,zs:pr.st?Math.max(0,Math.min(999,+pr.st.zs||0)):0,hit:pr.st?Math.max(0,Math.min(999,+pr.st.hit||0)):0,online:true};
+   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,mem:(pr.st&&Array.isArray(pr.st.rs))?Math.min(8,pr.st.rs.length):0,zs:pr.st?Math.max(0,Math.min(999,+pr.st.zs||0)):0,hit:pr.st?Math.max(0,Math.min(999,+pr.st.hit||0)):0,wa:pr.st?Math.max(0,Math.min(999,+pr.st.wa||0)):0,online:true};
   if(+n>H.n)H.n=+n;});
+ if(H.ct){H.ctRes=H.ctRes||{};peers.forEach(p=>{const c=(p.presence||{}).ct;if(!Array.isArray(c)||c[0]!==H.ct)return;
+  H.ctRes[p.id]={pre:Math.max(0,Math.min(100,+c[1]||0)),post:Math.max(0,Math.min(100,+c[2]||0)),pred:c[3]?1:0,done:c[4]?1:0,n:String(c[5]||'').slice(0,10),on:1};});
+  Object.keys(H.ctRes).forEach(k=>{if(!peers.some(p=>p.id===k))H.ctRes[k].on=0;});}
  autoWin();saveH();renderHost();
 }
 function autoWin(){
@@ -777,23 +837,51 @@ function chart(){
  const ap=Math.round(recs.reduce((s,r)=>s+r.pre,0)/recs.length),aa=Math.round(recs.reduce((s,r)=>s+r.post,0)/recs.length);
  return s+`</svg><div class="legend"><span><i style="background:#FF3B30"></i>摸之前預測的抗拒程度</span><span><i style="background:#3FD27A"></i>摸完的實際感受</span></div><p style="margin:10px 0 0">全班平均：預測 <b class="led">${ap}</b> → 實際 <b style="color:var(--exit)">${aa}</b>（共 ${recs.length} 次）</p>`;
 }
-let showIdx=-1;
+let showIdx=-1,ctConfirm=false;
+function ctPanel(){
+ if(!H.ct)return'';
+ const R=Object.values(H.ctRes||{});const pred=R.filter(x=>x.pred).length,done=R.filter(x=>x.done);
+ const ap=done.length?Math.round(done.reduce((s,x)=>s+x.pre,0)/done.length):0,aa=done.length?Math.round(done.reduce((s,x)=>s+x.post,0)/done.length):0;
+ const W=560,Hh=300,L=150,Rx=410,T0=30,B0=260,y=v=>T0+(B0-T0)*(1-v/100);
+ let svg=`<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="每個人摸之前預測和摸完實際的分數">`;
+ [0,50,100].forEach(v=>{svg+=`<line x1="${L}" x2="${Rx}" y1="${y(v)}" y2="${y(v)}" stroke="#272E3B"/><text x="${L-10}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="#7F899B" font-family="Share Tech Mono, monospace">${v}</text>`});
+ svg+=`<text x="${L}" y="${Hh-12}" text-anchor="middle" font-size="13" fill="#FF6B61">摸之前預測</text><text x="${Rx}" y="${Hh-12}" text-anchor="middle" font-size="13" fill="#3FD27A">摸完實際</text>`;
+ done.forEach(x=>{svg+=`<line x1="${L}" y1="${y(x.pre)}" x2="${Rx}" y2="${y(x.post)}" stroke="${x.post<x.pre?'#3FD27A':'#FF3B30'}" stroke-opacity=".45" stroke-width="2"/>`;});
+ if(done.length)svg+=`<line x1="${L}" y1="${y(ap)}" x2="${Rx}" y2="${y(aa)}" stroke="#F4B942" stroke-width="5"/><circle cx="${L}" cy="${y(ap)}" r="6" fill="#F4B942"/><circle cx="${Rx}" cy="${y(aa)}" r="6" fill="#F4B942"/><text x="${L-16}" y="${y(ap)-10}" text-anchor="end" font-size="16" fill="#F4B942" font-family="Share Tech Mono, monospace">${ap}</text><text x="${Rx+14}" y="${y(aa)+5}" font-size="16" fill="#F4B942" font-family="Share Tech Mono, monospace">${aa}</text>`;
+ svg+='</svg>';
+ return`<div class="results"><div>${svg}<div class="legend"><span><i style="background:#F4B942"></i>全班平均</span><span><i style="background:#3FD27A"></i>比預測好</span><span><i style="background:#FF3B30"></i>比預測差</span></div></div>
+  <div><h2 style="font-family:var(--f-title);font-size:1.4rem;margin-bottom:10px">全班驚喜任務：每個人的預測和實際</h2>
+  <div class="row" style="gap:24px"><div class="online">${pred}<small>已預測</small></div><div class="online">${done.length}<small>已完成</small></div><div class="online" style="color:var(--text)">${devTotal}<small>上線人數</small></div></div>
+  ${done.length?`<p style="margin:14px 0 0">全班平均：預測 <b class="led">${ap}</b> → 實際 <b style="color:var(--exit)">${aa}</b>，有 <b>${done.filter(x=>x.post<x.pre).length}</b> 人比自己預測的好。</p>`:'<p class="hint" style="margin-top:14px">等大家回報結果……</p>'}
+  <div class="row" style="margin-top:14px"><button class="btn ghost" data-a="ctend">結束全班任務</button></div></div></div>`;
+}
 function teamList(ns){return '第 '+ns.join('、')+' 組';}
 function topBy(fn,minOk){let best=null,ns=[];for(let n=1;n<=H.n;n++){const v=teamView(n);const x=fn(v);if(x==null||!(minOk(x)))continue;if(best==null||x>best){best=x;ns=[n];}else if(x===best)ns.push(n);}return best==null?null:{v:best,ns};}
 function awards(){
  const out=[];
- const fast=topBy(v=>(v.stage>=6&&v.startedAt&&v.finishedAt)?-(v.finishedAt-v.startedAt):null,x=>true);
- if(fast)out.push({icon:'🏆',name:'最速逃脫獎',who:teamList(fast.ns),stat:'只花了 '+mmss(-fast.v)+' 就逃出 Stan 的心智大樓',img:'meme3.jpg'});
- else{const deep=topBy(v=>v.stage||0,x=>x>0);out.push({icon:'🏆',name:'最深入大樓獎',who:deep?teamList(deep.ns):'全班',stat:deep?'闖到了 '+STAGES[Math.min(6,deep.v)]:'大家都還在大廳徘徊',img:'meme3.jpg'});}
+ const esc6=[];for(let n=1;n<=H.n;n++){const v=teamView(n);if(v.stage>=6&&v.finishedAt)esc6.push([n,v.finishedAt]);}
+ if(esc6.length>=2){const late=Math.max(...esc6.map(e=>e[1]));const ns=esc6.filter(e=>e[1]===late).map(e=>e[0]);
+  out.push({icon:'📺',name:'這集看完就去讀獎',who:teamList(ns),stat:'最後一個逃出大樓，但還是逃出來了！',img:'aw-later.jpg'});}
+ const stuck=[];for(let n=1;n<=H.n;n++){const v=teamView(n);if(v.stage>=1&&v.stage<=5)stuck.push(n);}
+ if(stuck.length&&esc6.length)out.push({icon:'🫠',name:'好想逃離一切獎',who:teamList(stuck),stat:'到現在還困在 Stan 的心智大樓裡',img:'aw-escape.jpg'});
+ const wr=topBy(v=>v.wa||0,x=>x>0);
+ if(wr)out.push({icon:'📋',name:'計畫趕不上變化獎',who:teamList(wr.ns),stat:'全場答錯最多次：'+wr.v+' 次',img:'aw-plan.jpg'});
  const toil=topBy(v=>(v.toilet||[]).length,x=>x>0);
  out.push(toil?{icon:'🚽',name:'馬桶之王獎',who:teamList(toil.ns),stat:'完成驚喜任務 '+toil.v+' 次'+(teamView(toil.ns[0]).mem&&toil.v>=teamView(toil.ns[0]).mem?'，全員都摸過了！':''),img:'meme2.jpg'}
   :{icon:'🚽',name:'馬桶之王獎',who:'從缺',stat:'居然沒有人摸到馬桶？太神了',img:'meme2.jpg'});
  const snip=topBy(v=>v.zs||0,x=>x>0);
- out.push(snip?{icon:'🎯',name:'神射手獎',who:teamList(snip.ns),stat:'用遙控器按了別組的警報燈 '+snip.v+' 次',img:'meme4.jpg'}
-  :{icon:'🕊️',name:'和平使者獎',who:'全班',stat:'沒有人用遙控器陷害別組，好善良',img:'meme4.jpg'});
+ out.push(snip?{icon:'🎯',name:'神射手獎',who:teamList(snip.ns),stat:'丟警報手榴彈炸了別組 '+snip.v+' 次。有罪惡感，但還是想丟',img:'aw-homer.jpg'}
+  :{icon:'🕊️',name:'和平使者獎',who:'全班',stat:'沒有人丟警報手榴彈，好善良',img:'meme4.jpg'});
  const hit=topBy(v=>v.hit||0,x=>x>0);
- out.push(hit?{icon:'😇',name:'天選之組獎',who:teamList(hit.ns),stat:'被別組按了 '+hit.v+' 次警報燈',img:'meme1.jpg'}
+ out.push(hit?{icon:'🏃',name:'天選之組獎',who:teamList(hit.ns),stat:'被別組的手榴彈炸了 '+hit.v+' 次，快逃！',img:'aw-run.jpg'}
   :{icon:'📸',name:'全班大合照獎',who:'全班',stat:'每一組都平安無事，一起畢業吧',img:'meme1.jpg'});
+ let gap=null;
+ Object.values(H.ctRes||{}).forEach(r=>{if(r.done&&r.pre-r.post>0&&(!gap||r.pre-r.post>gap.d))gap={d:r.pre-r.post,who:r.n||'某位同學',pre:r.pre,post:r.post};});
+ if(!gap)for(let n=1;n<=H.n;n++)(teamView(n).toilet||[]).forEach(r=>{if(r[0]-r[1]>0&&(!gap||r[0]-r[1]>gap.d))gap={d:r[0]-r[1],who:'第 '+n+' 組',pre:r[0],post:r[1]};});
+ if(gap)out.push({icon:'🧠',name:'腦補大師獎',who:gap.who,stat:'摸之前預測 '+gap.pre+' 分，摸完只有 '+gap.post+' 分。想像中的馬桶比較可怕',img:'aw-doge.jpg'});
+ const fast=topBy(v=>(v.stage>=6&&v.startedAt&&v.finishedAt)?-(v.finishedAt-v.startedAt):null,x=>true);
+ if(fast){const w=teamView(fast.ns[0]).wa||0;out.push({icon:'🏆',name:'第一名',who:teamList(fast.ns),stat:'最快逃出 Stan 的心智大樓：只花了 '+mmss(-fast.v)+'，'+(w?'只答錯 '+w+' 次':'零失誤！'),img:'aw-win.jpg'});}
+ else{const deep=topBy(v=>v.stage||0,x=>x>0);out.push({icon:'🏆',name:'第一名',who:deep?teamList(deep.ns):'全班',stat:deep?'闖得最深，到了 '+STAGES[Math.min(6,deep.v)]:'大家都還在大廳徘徊',img:'aw-win.jpg'});}
  return out;
 }
 function showHTML(){
@@ -813,24 +901,28 @@ function renderHost(){
   const segs=['1F','B1','B2','B3','出口'].map((l,k)=>{const f=k+1;return`<div class="seg ${v.stage>f?'done':v.stage===f?'now':''}">${l}</div>`}).join('');
   const al=[0,1,2].map(k=>`<i class="${v.locked||k<v.strikes?'on':''}"></i>`).join('');
   return`<div class="trow ${v.locked?'locked siren':''} ${v.stage>=6?'won':''}"><div class="tname"><span class="dot ${v.online?'on':''}"></span>TEAM ${n}<small>${v.online?(devTeam[n]||0)+' 台在線':'離線'}${v.mem?' · '+v.mem+' 人報到':''}${v.toilet&&v.toilet.length?' · 任務 '+v.toilet.length+' 次':''}</small></div>
-   <div class="segs">${segs}</div><div class="tstat">${st}<div class="al">${al}</div>${v.charges?`<div class="hint" style="color:var(--led)">遙控器 ×${v.charges}</div>`:''}${v.online?'':`<div class="manual"><button data-a="man" data-n="${n}" data-d="-1" aria-label="第${n}組手動退一層">◀</button><button data-a="man" data-n="${n}" data-d="1" aria-label="第${n}組手動進一層">▶</button></div>`}</div></div>`}).join('');
+   <div class="segs">${segs}</div><div class="tstat">${st}<div class="al">${al}</div>${v.charges?`<div class="hint" style="color:var(--led)">手榴彈 ×${v.charges}</div>`:''}${v.online?'':`<div class="manual"><button data-a="man" data-n="${n}" data-d="-1" aria-label="第${n}組手動退一層">◀</button><button data-a="man" data-n="${n}" data-d="1" aria-label="第${n}組手動進一層">▶</button></div>`}</div></div>`}).join('');
  const roomBar=net.mode==='mqtt'?`<div class="hostbar"><div><div class="hint">房間代碼</div><div class="code">${esc(ROOM)}</div></div><div><div class="hint">各組用手機掃描 QR code，或打開這個網址：</div><div class="url">${esc(joinUrl())}</div><div class="hint" style="margin-top:6px">連線狀態：${netText()}</div></div><div id="qr" aria-label="加入遊戲的 QR code"></div></div>`
   :`<div class="hint" style="margin-top:8px">連線狀態：${netText()}。各組打開同一個網址、選擇組別即可。</div>`;
- $('#app').innerHTML=`<section class="stage"><div class="host-top"><div><div class="eyebrow">STAN TOWER · 監控室</div><h1>各組闖到哪一層</h1>
+ $('#app').innerHTML=`<section class="stage"><div class="host-top"><div><div class="eyebrow">心智大逃脫 · 監控室</div><h1>各組闖到哪一層</h1>
   <div class="row" style="margin-top:10px"><div class="online">${devTotal}<small>上線人數（裝置）</small></div><div class="hint">已選組 ${devTotal-devLobby} 台・在選組畫面 ${devLobby} 台</div></div></div>
   <div style="text-align:right"><div class="clock ${c.over?'':'ok'}" id="clock">${c.over?'00:00':c.t}</div>
   <div class="row" style="justify-content:flex-end;margin-top:8px">${c.run?`<button class="btn ghost" data-a="pause">暫停</button>`:`<button class="btn red" data-a="start">${H.start?'繼續':'開始計時'}</button>`}<button class="btn ghost" data-a="treset">時間歸零</button>${H.confirm?`<span class="hint" style="color:var(--text)">清除所有組別進度？</span><button class="btn red" data-a="hry">確定重設</button><button class="btn ghost" data-a="hrn">取消</button>`:`<button class="btn ghost" data-a="hr">重設整個遊戲</button>`}</div>
   <div class="row" style="justify-content:flex-end;margin-top:8px"><select class="sel" id="dur" data-a="dur" aria-label="時間長度">${[20,25,30,35,40,45,50].map(m=>`<option value="${m}" ${H.dur===m?'selected':''}>${m} 分鐘</option>`).join('')}</select>
+  <button class="btn ghost" data-a="rules">遊戲規則</button>
   <button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button></div></div></div>
   ${roomBar}
   ${H.surprise&&!H.surDismiss?`<div class="win" style="margin-top:16px">${confetti()}<div class="eyebrow">ALL CLEAR</div><h1>大獲全勝！</h1>
    <div class="reveal-big">送給全班一個<br><b>驚喜任務！</b></div>
    <p class="story">${H.surpriseAll?'各組':'還沒做過驚喜任務的組別'}手機已經收到驚喜禮物，打開後開始任務。</p>
    <button class="btn ghost" data-a="surdis">收起慶祝畫面</button></div>`:''}
-  ${feed.length?`<div class="feed" aria-label="警報紀錄">${feed.map(z=>`<div><b>警報！</b>第 ${z.f} 組按下了第 ${z.to} 組的警報燈${z.t?` · ${new Date(z.t).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`:''}</div>`).join('')}</div>`:''}
+  ${feed.length?`<div class="feed" aria-label="警報紀錄">${feed.map(z=>`<div><b>警報！</b>第 ${z.f} 組丟手榴彈炸了第 ${z.to} 組${z.t?` · ${new Date(z.t).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`:''}</div>`).join('')}</div>`:''}
   <div class="board">${rows}</div>
   <div class="surprise-box"><div><b style="color:var(--amber)">大獲全勝</b>　<button class="iconbtn" data-a="autotog" aria-pressed="${H.autoWin!==false}">自動：${H.autoWin===false?'關':'開'}</button><div class="hint">${H.surprise?`驚喜已送出${H.surpriseAt?' · '+new Date(H.surpriseAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):''}。`:H.autoWin===false?'自動已關閉，要送驚喜請按右邊的按鈕。':(H.start?'所有已開始的組別都逃脫後，會自動送出驚喜，沒做過驚喜任務的組別要接受挑戰。':'按下「開始計時」後啟動：所有已開始的組別都逃脫，就會自動送出驚喜。')}</div></div>
    <div class="row">${surConfirm?`<span>確定送給所有組別？</span><button class="btn gold" data-a="sury">送出</button><button class="btn ghost" data-a="surn">取消</button>`:`<button class="btn gold" data-a="sur" ${net.state==='live'?'':'disabled'}>${H.surprise?'再送一次（全部組別）':'手動送出驚喜'}</button>`}</div></div>
+  <div class="surprise-box"><div><b style="color:var(--amber)">全班驚喜任務</b><div class="hint">不分組、不管有沒有逃脫，每個人用自己的手機預測自己的分數，再一起去摸馬桶。</div></div>
+   <div class="row">${ctConfirm?`<span>確定送給全班每一個人？</span><button class="btn gold" data-a="cty">送出</button><button class="btn ghost" data-a="ctn">取消</button>`:`<button class="btn gold" data-a="ctask" ${net.state==='live'?'':'disabled'}>${H.ct?'再送一次全班任務':'全班一起來：送出全班驚喜任務'}</button>`}</div></div>
+  ${ctPanel()}
   <div class="row" style="margin-top:12px"><button class="btn ghost" data-a="tn" data-d="-1">少一組</button><button class="btn ghost" data-a="tn" data-d="1">多一組</button><span class="hint">目前 ${H.n} 組：同學的選組畫面只會出現第 1～${H.n} 組。</span></div>
   <div class="row" style="margin-top:24px"><button class="btn gold" data-a="showstart">梗圖大放送（頒獎典禮）</button><span class="hint">建議在遊戲結束後、揭曉實驗結果前播放。</span></div>
   ${H.reveal?`<div class="results"><div>${chart()}</div><div><h2 style="font-family:var(--f-title);font-size:1.4rem;margin-bottom:10px">揭曉：驚喜任務就是摸馬桶，其實是一個行為實驗</h2><ol>
@@ -843,6 +935,7 @@ function renderHost(){
   <div class="foot"><span>資料：Corey《諮商與心理治療》第10章、Stan 個案（第1章）；《諮商理論與實務》第7章；Beck &amp; Weishaar in Corsini《Current Psychotherapies》</span>
   <span>重設會清除所有組別的進度、計時和驚喜，各組手機會回到選組畫面。</span></div></section>`;
  if(showIdx>=0)$('#app').insertAdjacentHTML('beforeend',showHTML());
+ if(showRules&&showIdx<0)$('#app').insertAdjacentHTML('beforeend',`<div class="show rulesshow" role="dialog" aria-label="遊戲規則"><div class="rulesscroll">${rulesHTML(true)}</div><div class="showbar"><button class="btn gold" data-a="rules">關閉</button></div></div>`);
  const si=$('.showimg');if(si)si.addEventListener('error',()=>si.remove());
  const qr=$('#qr');if(qr&&window.QRCode){try{new window.QRCode(qr,{text:joinUrl(),width:132,height:132,colorDark:'#07090D',colorLight:'#ffffff'});}catch(e){}}
 }
@@ -866,6 +959,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='mute'){muted=!muted;ls.set('tower-mute',muted);mode()==='host'?renderHost():renderLift();return;}
  if(a==='music'){music.toggle();mode()==='host'?renderHost():renderLift();return;}
  /* host */
+ if(a==='rules'&&mode()==='host'){showRules=!showRules;renderHost();return;}
  if(a==='start'){if(!H.start)H.start=Date.now();else if(H.paused){H.start+=Date.now()-H.paused;}H.paused=0;saveH();renderHost();return;}
  if(a==='pause'){H.paused=Date.now();saveH();renderHost();return;}
  if(a==='treset'){H.start=0;H.paused=0;saveH();renderHost();return;}
@@ -883,19 +977,29 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='surn'){surConfirm=false;renderHost();return;}
  if(a==='surdis'){H.surDismiss=true;saveH();renderHost();return;}
  if(a==='autotog'){H.autoWin=H.autoWin===false;if(H.autoWin)autoWin();saveH();renderHost();return;}
+ if(a==='ctask'){ctConfirm=true;renderHost();return;}
+ if(a==='ctn'){ctConfirm=false;renderHost();return;}
+ if(a==='cty'){ctConfirm=false;H.ct='c'+Date.now().toString(36);H.ctAt=Date.now();H.ctRes={};saveH();hostPresence();sfx.open();renderHost();return;}
+ if(a==='ctend'){H.ct=null;saveH();hostPresence();renderHost();return;}
  if(a==='sury'){surConfirm=false;H.surprise='s'+Date.now().toString(36);H.surpriseAt=Date.now();H.surpriseAll=true;H.surDismiss=false;saveH();hostPresence();sfx.open();renderHost();return;}
- if(a==='hry'){H={n:H.n,mem:H.mem,teams:{},manual:{},dur:H.dur,start:0,paused:0,reveal:false,confirm:false,autoWin:H.autoWin,resetId:'r'+Date.now().toString(36),resetAt:Date.now()};feed=[];saveH();hostPresence();renderHost();showToast('good','已重設：各組手機會回到選組畫面');return;}
+ if(a==='hry'){H={ct:null,ctRes:{},n:H.n,mem:H.mem,teams:{},manual:{},dur:H.dur,start:0,paused:0,reveal:false,confirm:false,autoWin:H.autoWin,resetId:'r'+Date.now().toString(36),resetAt:Date.now()};feed=[];saveH();hostPresence();renderHost();showToast('good','已重設：各組手機會回到選組畫面');return;}
  /* team */
+ if(a==='ct1'&&CT){CT.phase=0;sfx.open();saveCT();renderTeam();return;}
+ if(a==='ctgo'&&CT){CT.phase=1;saveCT();renderTeam();return;}
+ if(a==='ctdone'&&CT){CT.done=1;sfx.open();saveCT();renderTeam();window.scrollTo(0,0);return;}
+ if(a==='ctskip'&&CT){CT.closed=1;CT.skip=1;saveCT();renderTeam();return;}
+ if(a==='ctclose'&&CT){CT.closed=1;saveCT();renderTeam();return;}
  if(a==='pick'){T=freshTeam(+el.dataset.n);ls.set(TKEY,T);onTeamNet();if(T&&!T.rev){saveT();}renderTeam();window.scrollTo(0,0);return;}
  if(!T)return;
  if(a==='switch'){T=null;ls.set(TKEY,null);showFile=false;zapOpen=false;pushTeam();renderTeam();return;}
- if(a==='file'){showFile=!showFile;zapOpen=false;renderTeam();window.scrollTo(0,0);return;}
+ if(a==='rules'&&mode()!=='host'){showRules=!showRules;showFile=false;zapOpen=false;renderTeam();window.scrollTo(0,0);return;}
+ if(a==='file'){showFile=!showFile;showRules=false;zapOpen=false;renderTeam();window.scrollTo(0,0);return;}
  if(a==='zap'){zapOpen=!zapOpen;if(zapOpen)onTeamNet();renderLift();return;}
  if(a==='zapt'){zapTeam(+el.dataset.n);return;}
  if(a==='ready'){if(!T.my)return;T.nd=1;sfx.open();saveT();renderTeam();return;}
  if(a==='hushok'){T.hush=0;saveT();renderTeam();return;}
  if(a==='memeok'){T.meme=0;T.strikes=0;saveT();renderTeam();return;}
- if(!T.my||T.hush||T.meme||showFile)return;
+ if(!T.my||T.hush||T.meme||showFile||showRules)return;
  if(a==='sur2'){T.sur=2;sfx.open();saveT();renderTeam();return;}
  if(a==='sur3'){T.sur=0;triggerTask(true);saveT();renderTeam();window.scrollTo(0,0);return;}
  if(T.sur)return;
@@ -921,11 +1025,14 @@ document.addEventListener('keydown',e=>{if(mode()!=='host'||showIdx<0)return;
  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();const n=awards().length;if(showIdx<n){showIdx++;sfx.open();renderHost();}}
  else if(e.key==='ArrowLeft'){showIdx=Math.max(0,showIdx-1);renderHost();}
  else if(e.key==='Escape'){showIdx=-1;renderHost();}});
-document.addEventListener('input',e=>{const el=e.target;if(el.dataset.a==='pen'&&T&&T.pen){T.pen[el.dataset.k]=+el.value;const o=el.nextElementSibling;if(o)o.textContent=el.value;}});
+document.addEventListener('keydown',e=>{if(mode()==='host'&&showRules&&showIdx<0&&e.key==='Escape'){showRules=false;renderHost();}});
+document.addEventListener('input',e=>{const el=e.target;if(el.dataset.a==='ctr'&&CT){CT[el.dataset.k]=+el.value;const o=el.nextElementSibling;if(o)o.textContent=el.value;ls.set('tower-ct',CT);return;}if(el.dataset.a==='pen'&&T&&T.pen){T.pen[el.dataset.k]=+el.value;const o=el.nextElementSibling;if(o)o.textContent=el.value;}});
 document.addEventListener('change',e=>{const el=e.target;
  if(el.dataset.a==='pensel'&&T&&T.pen){T.pen[el.dataset.k]=el.value;saveT();renderTeam();}
  else if(el.dataset.a==='pen'&&T){saveT();}
- else if(el.dataset.a==='dur'){H.dur=+el.value;saveH();renderHost();}
+ else if(el.dataset.a==='ctr'&&CT){saveCT();}
+ else if(el.dataset.a==='cts'&&CT){CT[el.dataset.k]=el.value;saveCT();renderTeam();}
+ else if(el.dataset.a==='dur'){H.dur=+el.value;saveH();hostPresence();renderHost();}
  else if(el.dataset.a==='mem'){H.mem=+el.value;saveH();hostPresence();renderHost();}
 });
 enterMode();
