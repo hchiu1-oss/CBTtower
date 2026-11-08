@@ -285,6 +285,18 @@ select.sel{background:var(--wall);border:1px solid var(--line);border-radius:4px
 body{margin:0}
 [hidden]{display:none!important}
 img{max-width:100%}
+
+.show{position:fixed;inset:0;z-index:30;background:radial-gradient(circle at 50% 30%,#1B1608,var(--void) 70%);display:grid;grid-template-rows:minmax(0,1fr) auto;gap:16px;overflow:hidden;
+ padding:calc(env(safe-area-inset-top,0px) + 24px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 20px) max(16px,env(safe-area-inset-left,0px))}
+.showcard{align-self:center;justify-self:center;width:min(1100px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:center;position:relative;z-index:1}
+.showtxt{display:grid;gap:10px}
+.awicon{font-size:clamp(3rem,8vw,5rem);line-height:1}
+.awname{font-family:var(--f-title);font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--amber);text-shadow:0 0 24px rgba(244,185,66,.45)}
+.awwho{font-family:var(--f-led);font-size:clamp(1.6rem,4vw,2.6rem);color:var(--text);letter-spacing:.08em}
+.awstat{font-size:clamp(1.1rem,2.4vw,1.5rem);margin:0;color:var(--text)}
+.showimg{max-height:min(70vh,640px);max-width:100%;justify-self:center;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.showbar{display:flex;gap:12px;justify-content:center;position:relative;z-index:1}
+@media (max-width:760px){.showcard{grid-template-columns:minmax(0,1fr);gap:16px}.showimg{max-height:40vh}}
 </style>
 </head>
 <body>
@@ -429,10 +441,11 @@ function netText(){return net.state==='live'?(net.mode==='claude'?'已連線':'�
 /* ================= team state ================= */
 const TKEY='tower-team-v2';
 function freshTeam(n){return{team:n,rev:0,createdAt:Date.now(),stage:0,strikes:0,locked:false,pen:null,toilet:[],startedAt:0,finishedAt:0,streak:0,charges:0,zaps:[],applied:[],sur:0,surSeen:[],hush:0,meme:0,
- roster:[],my:null,nd:0,auth:0,s1:{placed:{},cur:0,msg:null},s2:{pins:[],msg:null,done:false},s3:{asked:[]},s4:{d:[0,0,0],msg:null,open:false},s5:{flip:[],wrong:[]},login:{err:false}};}
+ roster:[],my:null,nd:0,auth:0,zs:0,hit:0,s1:{placed:{},cur:0,msg:null},s2:{pins:[],msg:null,done:false},s3:{asked:[]},s4:{d:[0,0,0],msg:null,open:false},s5:{flip:[],wrong:[]},login:{err:false}};}
 let T=ls.get(TKEY,null);
 if(T&&!T.s1)T=null;
 const MYID=(()=>{let v=ls.get('tower-me-id','');if(!/^[a-z0-9]{6,12}$/.test(v)){v=Math.random().toString(36).slice(2,10);ls.set('tower-me-id',v);}return v;})();
+let hostN=0;
 let others={},teamCounts={},sameCount=1,hostMem=ls.get('tower-mem',4),zapOpen=false,showFile=false,lobbyDevs=0;
 const rosterSorted=()=>(T&&T.roster?T.roster.slice().sort((a,b)=>a[2]-b[2]||(a[0]<b[0]?-1:1)):[]);
 const members=()=>{const n=T&&T.roster?T.roster.length:0;return n>0?Math.min(8,n):Math.max(2,Math.min(6,hostMem||4));};
@@ -449,7 +462,7 @@ const IDS=x=>Array.isArray(x)?x.filter(v=>typeof v==='string'&&v.length<24).slic
 const NUMS=(x,max)=>Array.isArray(x)?x.map(v=>Math.max(0,Math.min(max,Math.round(+v||0)))).slice(0,10):[];
 function packState(){const p=T.pen;return{rev:T.rev||0,cr:T.createdAt||0,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,
  pen:p?[p.phase,p.pre,p.pred,p.post,p.act,p.surprise?1:0,p.lv]:null,toilet:T.toilet.slice(-8).map(x=>[x.pre,x.post,x.lv||0]),
- sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),
+ sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),zs:T.zs||0,hit:T.hit||0,
  ap:(T.applied||[]).slice(-10),ss:(T.surSeen||[]).slice(-3),
  s1:Object.keys(T.s1.placed),s2:[T.s2.pins,T.s2.done?1:0],s3:T.s3.asked,s4:[T.s4.d,T.s4.open?1:0],s5:[T.s5.flip,T.s5.wrong]};}
 function adoptState(st){
@@ -460,7 +473,7 @@ function adoptState(st){
  if(T.locked&&!T.pen)T.locked=false;
  T.toilet=Array.isArray(st.toilet)?st.toilet.filter(Array.isArray).slice(-8).map(x=>({pre:n(x[0],0,100),post:n(x[1],0,100),lv:n(x[2],0,5)})):[];
  T.startedAt=+st.sa||0;T.finishedAt=+st.fa||0;T.streak=n(st.sk,0,2);T.charges=n(st.ch,0,2);T.sur=n(st.sur,0,2);T.hush=n(st.hu,0,1);T.meme=n(st.me,0,1);T.nd=n(st.nd,0,1);T.auth=n(st.au,0,1);
- mergeRoster(st.rs);
+ mergeRoster(st.rs);T.zs=Math.max(T.zs||0,n(st.zs,0,999));T.hit=Math.max(T.hit||0,n(st.hit,0,999));
  T.applied=[...new Set((T.applied||[]).concat(IDS(st.ap)))].slice(-20);T.surSeen=[...new Set((T.surSeen||[]).concat(IDS(st.ss)))].slice(-5);
  if(+st.cr)T.createdAt=Math.min(T.createdAt||Infinity,+st.cr);
  const placed={};IDS(st.s1).forEach(id=>{if(CARDS.some(c=>c.id===id))placed[id]=true;});T.s1.placed=placed;
@@ -486,6 +499,7 @@ function onTeamNet(){
  const peers=net.peers;const o={},counts={};let changed=false,adopted=false,lob=0,rosterCh=false;
  const host=peers.find(p=>(p.presence||{}).role==='host');
  const hp=host?host.presence:null;
+ const hn=hp?Math.max(2,Math.min(8,+hp.n||0)):0;if(hn&&hn!==hostN){hostN=hn;if(!T)changed=false,renderTeam();}
  if(hp&&+hp.mem>=2&&+hp.mem<=6&&+hp.mem!==hostMem){hostMem=+hp.mem;ls.set('tower-mem',hostMem);changed=!!T;}
  if(T&&hp&&typeof hp.resetId==='string'&&(+hp.resetAt||0)>(T.createdAt||0)){
   T=null;ls.set(TKEY,null);zapOpen=false;showFile=false;pushTeam();renderTeam();window.scrollTo(0,0);showToast('good','講者重設了遊戲，請重新選擇組別');return;}
@@ -500,6 +514,7 @@ function onTeamNet(){
    if(mergeRoster([pr.me])||(pr.st&&mergeRoster(pr.st.rs)))rosterCh=true;return;}
   (Array.isArray(pr.zaps)?pr.zaps:[]).forEach(z=>{if(!z||+z.to!==T.team||typeof z.id!=='string'||z.id.length>24)return;if((T.applied||[]).includes(z.id))return;if((+z.t||0)<(T.createdAt||0))return;
    T.applied=(T.applied||[]).concat(z.id).slice(-20);changed=true;
+   T.hit=(T.hit||0)+1;
    if(T.stage>=1&&T.stage<=5&&!T.locked&&!T.sur&&!T.meme&&!T.hush){strike();showToast('bad','第 '+n+' 組按下了你們的警報燈！');}});});
  if(T&&hp&&typeof hp.surprise==='string'&&hp.surprise.length<24&&!(T.surSeen||[]).includes(hp.surprise)&&(+hp.surpriseAt||0)>=(T.createdAt||0)){
   T.surSeen=(T.surSeen||[]).concat(hp.surprise).slice(-5);changed=true;
@@ -512,7 +527,7 @@ function onTeamNet(){
 }
 function syncText(){return sameCount>1?'同組 '+sameCount+' 台裝置同步中':'只有這台裝置';}
 function zapTeam(n){if(!T||!(T.charges>0))return;const v=others[n];if(!v||v.stage<1||v.stage>5||v.locked)return;
- T.charges--;const z={to:n,id:T.team+Date.now().toString(36).slice(-6)+Math.random().toString(36).slice(2,4),t:Date.now()};
+ T.charges--;T.zs=(T.zs||0)+1;const z={to:n,id:T.team+Date.now().toString(36).slice(-6)+Math.random().toString(36).slice(2,4),t:Date.now()};
  T.zaps=(T.zaps||[]).concat(z).slice(-5);zapOpen=false;sfx.alarm();saveT();renderLift();showToast('good','已按下第 '+n+' 組的警報燈');}
 
 /* ================= team rendering ================= */
@@ -547,7 +562,7 @@ function renderLobby(){
   <p class="story">深夜十一點。個案 Stan 的檔案被鎖在他的心智大樓裡，主治諮商師只留下一句話：<b>「越往下，越難觸及。」</b>你們要一層一層往下，把他的個案概念化拼完整，才能從出口離開。</p>
   ${needRoom?`<form id="roomf" class="fld"><label for="roomcode">輸入大螢幕上的房間代碼</label><div class="row"><input id="roomcode" class="codein" maxlength="8" autocomplete="off" autocapitalize="characters" inputmode="latin"><button class="btn green">進入</button></div></form>`
   :`<h2 style="font-size:1.1rem">你們是第幾組？</h2>
-  <div class="teams">${[1,2,3,4,5,6,7,8].map(n=>`<button data-a="pick" data-n="${n}">TEAM ${n}${teamCounts[n]?`<small style="display:block;font-size:.7rem;color:var(--exit)">${teamCounts[n]} 台已加入</small>`:''}</button>`).join('')}</div>
+  <div class="teams">${Array.from({length:hostN||8},(_,i)=>i+1).map(n=>`<button data-a="pick" data-n="${n}">TEAM ${n}${teamCounts[n]?`<small style="display:block;font-size:.7rem;color:var(--exit)">${teamCounts[n]} 台已加入</small>`:''}</button>`).join('')}</div>
   <p class="hint">同一組的手機請選同一個組別，進度會自動同步。建議一台手機負責操作，其他人跟著看。${net.mode==='mqtt'?'房間 '+esc(ROOM)+'・':''}<span id="netinfo">${netText()}</span></p>`}
 </section>`;
  const f=$('#roomf');if(f)f.addEventListener('submit',e=>{e.preventDefault();const v=($('#roomcode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(v.length<3){showToast('bad','代碼至少 3 個字');return;}setRoom(v);startMqtt();renderLobby();});
@@ -721,7 +736,7 @@ const HKEY='tower-host-v2';
 let H=ls.get(HKEY,{n:5,mem:4,teams:{},manual:{},dur:40,start:0,paused:0,reveal:false,confirm:false});
 let feed=[],surConfirm=false,devTotal=0,devTeam={},devLobby=0;
 function saveH(){ls.set(HKEY,H);}
-function hostPresence(){if(mode()!=='host')return;netSet({role:'host',mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
+function hostPresence(){if(mode()!=='host')return;netSet({role:'host',n:H.n||5,mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
 function absorb(peers){
  const best={};devTeam={};devLobby=0;devTotal=0;
  peers.forEach(p=>{if(p.isMe)return;const pr=p.presence||{};
@@ -733,7 +748,7 @@ function absorb(peers){
  const seen={};feed=fd.filter(z=>seen[z.id]?0:(seen[z.id]=1)).sort((a,b)=>b.t-a.t).slice(0,4);
  Object.keys(H.teams).forEach(k=>{H.teams[k].online=false;});
  Object.entries(best).forEach(([n,pr])=>{H.teams[n]={stage:Math.min(6,Math.max(0,+pr.stage||0)),strikes:+pr.strikes||0,locked:!!pr.locked,startedAt:+pr.sa||0,finishedAt:+pr.fa||0,
-   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,mem:(pr.st&&Array.isArray(pr.st.rs))?Math.min(8,pr.st.rs.length):0,online:true};
+   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,mem:(pr.st&&Array.isArray(pr.st.rs))?Math.min(8,pr.st.rs.length):0,zs:pr.st?Math.max(0,Math.min(999,+pr.st.zs||0)):0,hit:pr.st?Math.max(0,Math.min(999,+pr.st.hit||0)):0,online:true};
   if(+n>H.n)H.n=+n;});
  autoWin();saveH();renderHost();
 }
@@ -761,6 +776,32 @@ function chart(){
   s+=`<text x="${cx}" y="${Hh-12}" text-anchor="middle" font-size="13" fill="#D9DEE7">第${r.n}組</text>`;});
  const ap=Math.round(recs.reduce((s,r)=>s+r.pre,0)/recs.length),aa=Math.round(recs.reduce((s,r)=>s+r.post,0)/recs.length);
  return s+`</svg><div class="legend"><span><i style="background:#FF3B30"></i>摸之前預測的抗拒程度</span><span><i style="background:#3FD27A"></i>摸完的實際感受</span></div><p style="margin:10px 0 0">全班平均：預測 <b class="led">${ap}</b> → 實際 <b style="color:var(--exit)">${aa}</b>（共 ${recs.length} 次）</p>`;
+}
+let showIdx=-1;
+function teamList(ns){return '第 '+ns.join('、')+' 組';}
+function topBy(fn,minOk){let best=null,ns=[];for(let n=1;n<=H.n;n++){const v=teamView(n);const x=fn(v);if(x==null||!(minOk(x)))continue;if(best==null||x>best){best=x;ns=[n];}else if(x===best)ns.push(n);}return best==null?null:{v:best,ns};}
+function awards(){
+ const out=[];
+ const fast=topBy(v=>(v.stage>=6&&v.startedAt&&v.finishedAt)?-(v.finishedAt-v.startedAt):null,x=>true);
+ if(fast)out.push({icon:'🏆',name:'最速逃脫獎',who:teamList(fast.ns),stat:'只花了 '+mmss(-fast.v)+' 就逃出 Stan 的心智大樓',img:'meme3.jpg'});
+ else{const deep=topBy(v=>v.stage||0,x=>x>0);out.push({icon:'🏆',name:'最深入大樓獎',who:deep?teamList(deep.ns):'全班',stat:deep?'闖到了 '+STAGES[Math.min(6,deep.v)]:'大家都還在大廳徘徊',img:'meme3.jpg'});}
+ const toil=topBy(v=>(v.toilet||[]).length,x=>x>0);
+ out.push(toil?{icon:'🚽',name:'馬桶之王獎',who:teamList(toil.ns),stat:'完成驚喜任務 '+toil.v+' 次'+(teamView(toil.ns[0]).mem&&toil.v>=teamView(toil.ns[0]).mem?'，全員都摸過了！':''),img:'meme2.jpg'}
+  :{icon:'🚽',name:'馬桶之王獎',who:'從缺',stat:'居然沒有人摸到馬桶？太神了',img:'meme2.jpg'});
+ const snip=topBy(v=>v.zs||0,x=>x>0);
+ out.push(snip?{icon:'🎯',name:'神射手獎',who:teamList(snip.ns),stat:'用遙控器按了別組的警報燈 '+snip.v+' 次',img:'meme4.jpg'}
+  :{icon:'🕊️',name:'和平使者獎',who:'全班',stat:'沒有人用遙控器陷害別組，好善良',img:'meme4.jpg'});
+ const hit=topBy(v=>v.hit||0,x=>x>0);
+ out.push(hit?{icon:'😇',name:'天選之組獎',who:teamList(hit.ns),stat:'被別組按了 '+hit.v+' 次警報燈',img:'meme1.jpg'}
+  :{icon:'📸',name:'全班大合照獎',who:'全班',stat:'每一組都平安無事，一起畢業吧',img:'meme1.jpg'});
+ return out;
+}
+function showHTML(){
+ const A=awards();const last=showIdx>=A.length;
+ const body=last?`<div class="showcard" style="grid-template-columns:minmax(0,1fr);text-align:center;justify-items:center"><div class="eyebrow">NEXT</div><div class="reveal-big">接下來揭曉：<br><b>驚喜任務</b>到底是什麼？</div><button class="btn red" data-a="showreveal">揭曉實驗結果</button></div>`
+  :(()=>{const w=A[showIdx];return`<div class="showcard"><div class="showtxt"><div class="eyebrow">梗圖大放送・${showIdx+1} / ${A.length}</div><div class="awicon" aria-hidden="true">${w.icon}</div><h2 class="awname">${esc(w.name)}</h2><div class="awwho">${esc(w.who)}</div><p class="awstat">${esc(w.stat)}</p></div><img class="showimg" src="${w.img}" alt="梗圖"></div>`;})();
+ return`<div class="show" role="dialog" aria-label="梗圖大放送">${confetti()}${body}
+  <div class="showbar"><button class="btn ghost" data-a="showprev" ${showIdx<=0?'disabled':''}>上一個</button>${last?'':`<button class="btn gold" data-a="shownext">${showIdx===A.length-1?'最後一步':'下一個獎'}</button>`}<button class="btn ghost" data-a="showclose">關閉</button></div></div>`;
 }
 function renderHost(){
  $('#lift').innerHTML='';
@@ -790,16 +831,19 @@ function renderHost(){
   <div class="board">${rows}</div>
   <div class="surprise-box"><div><b style="color:var(--amber)">大獲全勝</b>　<button class="iconbtn" data-a="autotog" aria-pressed="${H.autoWin!==false}">自動：${H.autoWin===false?'關':'開'}</button><div class="hint">${H.surprise?`驚喜已送出${H.surpriseAt?' · '+new Date(H.surpriseAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):''}。`:H.autoWin===false?'自動已關閉，要送驚喜請按右邊的按鈕。':(H.start?'所有已開始的組別都逃脫後，會自動送出驚喜，沒做過驚喜任務的組別要接受挑戰。':'按下「開始計時」後啟動：所有已開始的組別都逃脫，就會自動送出驚喜。')}</div></div>
    <div class="row">${surConfirm?`<span>確定送給所有組別？</span><button class="btn gold" data-a="sury">送出</button><button class="btn ghost" data-a="surn">取消</button>`:`<button class="btn gold" data-a="sur" ${net.state==='live'?'':'disabled'}>${H.surprise?'再送一次（全部組別）':'手動送出驚喜'}</button>`}</div></div>
-  <div class="row" style="margin-top:12px"><button class="btn ghost" data-a="tn" data-d="-1">少一組</button><button class="btn ghost" data-a="tn" data-d="1">多一組</button><span class="hint">目前 ${H.n} 組</span></div>
+  <div class="row" style="margin-top:12px"><button class="btn ghost" data-a="tn" data-d="-1">少一組</button><button class="btn ghost" data-a="tn" data-d="1">多一組</button><span class="hint">目前 ${H.n} 組：同學的選組畫面只會出現第 1～${H.n} 組。</span></div>
+  <div class="row" style="margin-top:24px"><button class="btn gold" data-a="showstart">梗圖大放送（頒獎典禮）</button><span class="hint">建議在遊戲結束後、揭曉實驗結果前播放。</span></div>
   ${H.reveal?`<div class="results"><div>${chart()}</div><div><h2 style="font-family:var(--f-title);font-size:1.4rem;margin-bottom:10px">揭曉：驚喜任務就是摸馬桶，其實是一個行為實驗</h2><ol>
    <li>讓我們卻步的，多半是「摸了一定很噁心、會生病」的<b>預測</b>，而不是馬桶本身。</li>
    <li>任務一次比一次難：門把 → 沖水按鈕 → 馬桶蓋 → 馬桶座，這就是<b>漸進式作業</b>，也是暴露法的焦慮階層。</li>
    <li>REBT 的 Ellis 會說：「我絕對不能碰髒東西」是要求式的非理性信念，要去駁斥它。</li>
    <li>Beck 的 CT 會把它當成<b>可以檢驗的假設</b>：先寫下預測，親自去試，再比對證據。</li>
    <li>Stan 對女性和社交的害怕也是同一種結構，所以他的作業是去試一次，而不是被說服。</li>
-   <li>有人選擇不摸，也完全可以：實驗要在個案同意下設計。</li></ol></div></div>`:`<div class="row" style="margin-top:24px"><button class="btn red" data-a="reveal">揭曉驚喜任務的實驗結果</button></div>`}
+   <li>有人選擇不摸，也完全可以：實驗要在個案同意下設計。</li></ol></div></div>`:`<div class="row" style="margin-top:12px"><button class="btn red" data-a="reveal">揭曉驚喜任務的實驗結果</button></div>`}
   <div class="foot"><span>資料：Corey《諮商與心理治療》第10章、Stan 個案（第1章）；《諮商理論與實務》第7章；Beck &amp; Weishaar in Corsini《Current Psychotherapies》</span>
   <span>重設會清除所有組別的進度、計時和驚喜，各組手機會回到選組畫面。</span></div></section>`;
+ if(showIdx>=0)$('#app').insertAdjacentHTML('beforeend',showHTML());
+ const si=$('.showimg');if(si)si.addEventListener('error',()=>si.remove());
  const qr=$('#qr');if(qr&&window.QRCode){try{new window.QRCode(qr,{text:joinUrl(),width:132,height:132,colorDark:'#07090D',colorLight:'#ffffff'});}catch(e){}}
 }
 setInterval(()=>{if(mode()!=='host')return;const el=$('#clock');if(!el)return;const c=clockText();el.textContent=c.over?'00:00':c.t;el.classList.toggle('ok',!c.over);},500);
@@ -825,9 +869,14 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='start'){if(!H.start)H.start=Date.now();else if(H.paused){H.start+=Date.now()-H.paused;}H.paused=0;saveH();renderHost();return;}
  if(a==='pause'){H.paused=Date.now();saveH();renderHost();return;}
  if(a==='treset'){H.start=0;H.paused=0;saveH();renderHost();return;}
- if(a==='tn'){H.n=Math.max(2,Math.min(8,H.n+ +el.dataset.d));saveH();renderHost();return;}
+ if(a==='tn'){H.n=Math.max(2,Math.min(8,H.n+ +el.dataset.d));saveH();hostPresence();renderHost();return;}
  if(a==='man'){const n=el.dataset.n,v=teamView(n);H.manual[n]=Math.max(0,Math.min(6,(v.stage||0)+ +el.dataset.d));saveH();renderHost();return;}
  if(a==='reveal'){H.reveal=true;saveH();renderHost();return;}
+ if(a==='showstart'){showIdx=0;sfx.open();renderHost();return;}
+ if(a==='shownext'){showIdx++;sfx.open();renderHost();return;}
+ if(a==='showprev'){showIdx=Math.max(0,showIdx-1);renderHost();return;}
+ if(a==='showclose'){showIdx=-1;renderHost();return;}
+ if(a==='showreveal'){showIdx=-1;H.reveal=true;saveH();renderHost();setTimeout(()=>{const el=$('.results');if(el)el.scrollIntoView({behavior:'smooth'});},50);return;}
  if(a==='hr'){H.confirm=true;renderHost();return;}
  if(a==='hrn'){H.confirm=false;renderHost();return;}
  if(a==='sur'){surConfirm=true;renderHost();return;}
@@ -868,6 +917,10 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='pengo'){T.pen.phase=1;saveT();renderTeam();return;}
  if(a==='pendone'){const p=T.pen;T.toilet.push({pre:p.pre,post:p.post,lv:p.lv||0});const wasBonus=!!p.surprise;T.pen=null;T.locked=false;if(!wasBonus)T.strikes=0;sfx.open();T.hush=1;saveT();renderTeam();window.scrollTo(0,0);return;}
 });
+document.addEventListener('keydown',e=>{if(mode()!=='host'||showIdx<0)return;
+ if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();const n=awards().length;if(showIdx<n){showIdx++;sfx.open();renderHost();}}
+ else if(e.key==='ArrowLeft'){showIdx=Math.max(0,showIdx-1);renderHost();}
+ else if(e.key==='Escape'){showIdx=-1;renderHost();}});
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset.a==='pen'&&T&&T.pen){T.pen[el.dataset.k]=+el.value;const o=el.nextElementSibling;if(o)o.textContent=el.value;}});
 document.addEventListener('change',e=>{const el=e.target;
  if(el.dataset.a==='pensel'&&T&&T.pen){T.pen[el.dataset.k]=el.value;saveT();renderTeam();}
