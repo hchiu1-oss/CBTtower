@@ -267,7 +267,7 @@ select.sel{background:var(--wall);border:1px solid var(--line);border-radius:4px
 .who b{color:var(--amber)}
 .meme{border:3px dashed var(--amber);border-radius:12px;padding:28px 20px;display:grid;gap:16px;justify-items:center;text-align:center;background:radial-gradient(circle at 50% 30%,rgba(244,185,66,.18),transparent 70%)}
 .meme .big{font-family:var(--f-title);font-weight:900;font-size:clamp(2.6rem,12vw,5rem);color:var(--amber);line-height:1.1;transform:rotate(-4deg);text-shadow:4px 4px 0 #000}
-.meme img{max-width:min(320px,80vw);border-radius:8px}
+.meme img{max-width:min(320px,80vw);max-height:52vh;object-fit:contain;border-radius:8px}
 .hostbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;background:var(--wall);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-top:16px}
 .hostbar .code{font-family:var(--f-led);font-size:2.4rem;letter-spacing:.25em;color:var(--amber);line-height:1}
 .hostbar .url{font-family:var(--f-led);font-size:.85rem;color:var(--text);word-break:break-all}
@@ -383,7 +383,7 @@ const music={on:false,n:null,
 const params=new URLSearchParams(location.search);
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const DEV=Math.random().toString(36).slice(2,10);
-let ROOM=(params.get('room')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+let ROOM=(params.get('room')||'1234').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8)||'1234';
 const net={mode:IN_CLAUDE?'claude':'mqtt',state:'connecting',peers:[],me:{role:'lobby'},keys:[],timer:0};
 function netEmit(){onNet();}
 function netSet(obj){net.me=obj;clearTimeout(net.timer);net.timer=setTimeout(netPush,120);}
@@ -429,20 +429,27 @@ function netText(){return net.state==='live'?(net.mode==='claude'?'已連線':'�
 /* ================= team state ================= */
 const TKEY='tower-team-v2';
 function freshTeam(n){return{team:n,rev:0,createdAt:Date.now(),stage:0,strikes:0,locked:false,pen:null,toilet:[],startedAt:0,finishedAt:0,streak:0,charges:0,zaps:[],applied:[],sur:0,surSeen:[],hush:0,meme:0,
- names:[],nd:0,auth:0,s1:{placed:{},cur:0,msg:null},s2:{pins:[],msg:null,done:false},s3:{asked:[]},s4:{d:[0,0,0],msg:null,open:false},s5:{flip:[],wrong:[]},login:{err:false}};}
+ roster:[],my:null,nd:0,auth:0,s1:{placed:{},cur:0,msg:null},s2:{pins:[],msg:null,done:false},s3:{asked:[]},s4:{d:[0,0,0],msg:null,open:false},s5:{flip:[],wrong:[]},login:{err:false}};}
 let T=ls.get(TKEY,null);
 if(T&&!T.s1)T=null;
+const MYID=(()=>{let v=ls.get('tower-me-id','');if(!/^[a-z0-9]{6,12}$/.test(v)){v=Math.random().toString(36).slice(2,10);ls.set('tower-me-id',v);}return v;})();
 let others={},teamCounts={},sameCount=1,hostMem=ls.get('tower-mem',4),zapOpen=false,showFile=false,lobbyDevs=0;
-const members=()=>Math.max(2,Math.min(6,hostMem||4));
+const rosterSorted=()=>(T&&T.roster?T.roster.slice().sort((a,b)=>a[2]-b[2]||(a[0]<b[0]?-1:1)):[]);
+const members=()=>{const n=T&&T.roster?T.roster.length:0;return n>0?Math.min(8,n):Math.max(2,Math.min(6,hostMem||4));};
+function mergeRoster(list){if(!T)return false;if(!Array.isArray(T.roster))T.roster=[];let ch=false;
+ (Array.isArray(list)?list:[]).forEach(e=>{if(!Array.isArray(e))return;const id=String(e[0]||''),nm=String(e[1]||'').trim().slice(0,10),t=+e[2]||0;
+  if(!/^[a-z0-9]{6,12}$/.test(id)||!nm)return;const cur=T.roster.find(x=>x[0]===id);
+  if(!cur){if(T.roster.length<8){T.roster.push([id,nm,t]);ch=true;}}else if(cur[1]!==nm){cur[1]=nm;ch=true;}});
+ return ch;}
 const doneCount=()=>T?T.toilet.length:0;
-const memberName=k=>{const n=T&&T.names&&T.names[k];return n?n:'第 '+(k+1)+' 位組員';};
+const memberName=k=>{const e=rosterSorted()[k];return e?e[1]:'第 '+(k+1)+' 位組員';};
 function saveT(){T.rev=(T.rev||0)+1;ls.set(TKEY,T);pushTeam();}
 function saveLocal(){ls.set(TKEY,T);pushTeam();}
 const IDS=x=>Array.isArray(x)?x.filter(v=>typeof v==='string'&&v.length<24).slice(0,20):[];
 const NUMS=(x,max)=>Array.isArray(x)?x.map(v=>Math.max(0,Math.min(max,Math.round(+v||0)))).slice(0,10):[];
 function packState(){const p=T.pen;return{rev:T.rev||0,cr:T.createdAt||0,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,
  pen:p?[p.phase,p.pre,p.pred,p.post,p.act,p.surprise?1:0,p.lv]:null,toilet:T.toilet.slice(-8).map(x=>[x.pre,x.post,x.lv||0]),
- sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,nm:(T.names||[]).slice(0,6),
+ sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),
  ap:(T.applied||[]).slice(-10),ss:(T.surSeen||[]).slice(-3),
  s1:Object.keys(T.s1.placed),s2:[T.s2.pins,T.s2.done?1:0],s3:T.s3.asked,s4:[T.s4.d,T.s4.open?1:0],s5:[T.s5.flip,T.s5.wrong]};}
 function adoptState(st){
@@ -453,7 +460,7 @@ function adoptState(st){
  if(T.locked&&!T.pen)T.locked=false;
  T.toilet=Array.isArray(st.toilet)?st.toilet.filter(Array.isArray).slice(-8).map(x=>({pre:n(x[0],0,100),post:n(x[1],0,100),lv:n(x[2],0,5)})):[];
  T.startedAt=+st.sa||0;T.finishedAt=+st.fa||0;T.streak=n(st.sk,0,2);T.charges=n(st.ch,0,2);T.sur=n(st.sur,0,2);T.hush=n(st.hu,0,1);T.meme=n(st.me,0,1);T.nd=n(st.nd,0,1);T.auth=n(st.au,0,1);
- T.names=Array.isArray(st.nm)?st.nm.filter(v=>typeof v==='string').map(v=>v.slice(0,10)).slice(0,6):[];
+ mergeRoster(st.rs);
  T.applied=[...new Set((T.applied||[]).concat(IDS(st.ap)))].slice(-20);T.surSeen=[...new Set((T.surSeen||[]).concat(IDS(st.ss)))].slice(-5);
  if(+st.cr)T.createdAt=Math.min(T.createdAt||Infinity,+st.cr);
  const placed={};IDS(st.s1).forEach(id=>{if(CARDS.some(c=>c.id===id))placed[id]=true;});T.s1.placed=placed;
@@ -466,7 +473,7 @@ function pushTeam(){
  if(mode()==='host')return;
  if(!T){netSet({role:'lobby'});return;}
  netSet({role:'team',team:T.team,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,bonus:(T.pen&&T.pen.surprise)?1:0,sa:T.startedAt||0,fa:T.finishedAt||0,
-  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),st:packState()});
+  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),me:T.my?[T.my.id,T.my.n,T.my.t]:null,st:packState()});
 }
 function good(){T.streak=(T.streak||0)+1;if(T.streak>=3){T.streak=0;if((T.charges||0)<2){T.charges=(T.charges||0)+1;showToast('good','連續答對 3 題！拿到一個警報遙控器，點上方紅色按鈕，選一組按下他們的警報燈');}}}
 function triggerTask(surprise){
@@ -476,7 +483,7 @@ function triggerTask(surprise){
 function strike(){T.streak=0;T.strikes++;if(T.strikes>=3){T.strikes=3;triggerTask(false);sfx.alarm();}else sfx.bad();}
 
 function onTeamNet(){
- const peers=net.peers;const o={},counts={};let changed=false,adopted=false,lob=0;
+ const peers=net.peers;const o={},counts={};let changed=false,adopted=false,lob=0,rosterCh=false;
  const host=peers.find(p=>(p.presence||{}).role==='host');
  const hp=host?host.presence:null;
  if(hp&&+hp.mem>=2&&+hp.mem<=6&&+hp.mem!==hostMem){hostMem=+hp.mem;ls.set('tower-mem',hostMem);changed=!!T;}
@@ -489,7 +496,8 @@ function onTeamNet(){
   if(p.isMe)return;
   if(!T||n!==T.team){const st=Math.min(6,Math.max(0,+pr.stage||0));if(!o[n]||st>o[n].stage)o[n]={stage:st,locked:!!pr.locked};}
   if(!T)return;
-  if(n===T.team){if(pr.st&&typeof pr.st==='object'&&(+pr.st.rev||0)>(T.rev||0)){adoptState(pr.st);adopted=true;}return;}
+  if(n===T.team){if(pr.st&&typeof pr.st==='object'&&(+pr.st.rev||0)>(T.rev||0)){adoptState(pr.st);adopted=true;}
+   if(mergeRoster([pr.me])||(pr.st&&mergeRoster(pr.st.rs)))rosterCh=true;return;}
   (Array.isArray(pr.zaps)?pr.zaps:[]).forEach(z=>{if(!z||+z.to!==T.team||typeof z.id!=='string'||z.id.length>24)return;if((T.applied||[]).includes(z.id))return;if((+z.t||0)<(T.createdAt||0))return;
    T.applied=(T.applied||[]).concat(z.id).slice(-20);changed=true;
    if(T.stage>=1&&T.stage<=5&&!T.locked&&!T.sur&&!T.meme&&!T.hush){strike();showToast('bad','第 '+n+' 組按下了你們的警報燈！');}});});
@@ -498,7 +506,7 @@ function onTeamNet(){
   if(T.stage>=1&&!T.locked&&!T.meme&&(hp.surpriseAll||!(T.toilet&&T.toilet.length))){T.sur=1;zapOpen=false;sfx.open();}}
  others=o;lobbyDevs=lob;const prevSame=sameCount,prevCounts=JSON.stringify(teamCounts);teamCounts=counts;sameCount=T?(counts[T.team]||0)+1:1;
  if(changed){saveT();renderTeam();}
- else if(adopted){saveLocal();renderTeam();}
+ else if(adopted||rosterCh){saveLocal();renderTeam();}
  else if(!T){if(prevCounts!==JSON.stringify(counts)||!$('.teams'))renderTeam();}
  else{const f=$('#syncinfo');if(f)f.textContent=syncText();const ni=$('#netinfo');if(ni)ni.textContent=netText();if(zapOpen)renderLift();else{const zb=$('[data-a=zap]');if(zb)zb.disabled=!(T.charges>0&&net.state==='live'&&!T.locked);}}
 }
@@ -541,7 +549,7 @@ function renderLobby(){
   :`<h2 style="font-size:1.1rem">你們是第幾組？</h2>
   <div class="teams">${[1,2,3,4,5,6,7,8].map(n=>`<button data-a="pick" data-n="${n}">TEAM ${n}${teamCounts[n]?`<small style="display:block;font-size:.7rem;color:var(--exit)">${teamCounts[n]} 台已加入</small>`:''}</button>`).join('')}</div>
   <p class="hint">同一組的手機請選同一個組別，進度會自動同步。建議一台手機負責操作，其他人跟著看。${net.mode==='mqtt'?'房間 '+esc(ROOM)+'・':''}<span id="netinfo">${netText()}</span></p>`}
-  <p class="hint">講者請打開 <a href="#host" style="color:var(--amber)">監控室</a> 投影。</p></section>`;
+</section>`;
  const f=$('#roomf');if(f)f.addEventListener('submit',e=>{e.preventDefault();const v=($('#roomcode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(v.length<3){showToast('bad','代碼至少 3 個字');return;}setRoom(v);startMqtt();renderLobby();});
 }
 function stageHead(eb,title,story){return`<div class="eyebrow">${eb}</div><h1>${title}</h1><p class="story">${story}</p>`;}
@@ -558,11 +566,16 @@ function caseFile(){return`<article class="file" aria-label="Stan 的個案檔�
  <ul><li>喜歡自己多一點，不靠喝酒也能感覺好。</li><li>不再害怕女性，學會信任別人。</li><li>成為幫助問題青少年的諮商師。</li></ul>
  <p class="warnbox"><b>督導便條</b>：Stan 提到自殺念頭。不論用哪個學派，開始任何技術之前，都要先評估他的安全。</p>
  <p class="hint" style="color:#5b5245;margin:0">資料來源：Corey《諮商與心理治療理論與實務》第 1 章 Stan 個案</p></article>`;}
+function sMyName(){
+ return`<section class="stage">${stageHead('STEP 1 · 報到',`你要加入第 ${T.team} 組`,'請每個人用<b>自己的手機</b>輸入自己的名字。驚喜任務會照<b>報到的順序</b>輪流執行。')}
+  <form id="myf" class="fld"><label for="myname">你的名字（暱稱就好）</label><div class="row"><input id="myname" class="codein" style="letter-spacing:.05em;text-transform:none;font-family:var(--f-body);font-size:1.2rem;max-width:280px" maxlength="10" autocomplete="off" value="${esc(ls.get('tower-my-name',''))}"><button class="btn green">報到</button></div></form>
+  ${rosterSorted().length?`<div class="bag"><h3>第 ${T.team} 組已報到</h3><ul>${rosterSorted().map(e=>`<li>${esc(e[1])}</li>`).join('')}</ul></div>`:''}</section>`;
+}
 function sNames(){
- const m=members();
- return`<section class="stage">${stageHead('STEP 1 · 登記組員',`第 ${T.team} 組，請登記組員`,'驚喜任務會<b>輪流</b>由不同組員執行，這裡的順序就是輪流的順序。名字可以不填，會顯示成「第 1 位組員」。')}
-  <form id="namesf"><div class="names">${Array.from({length:m},(_,i)=>`<label class="fld"><span class="hint">組員 ${i+1}</span><input id="nm${i}" maxlength="10" value="${esc((T.names||[])[i]||'')}" autocomplete="off"></label>`).join('')}</div>
-  <div class="row" style="margin-top:14px"><button class="btn green">下一步</button><span class="hint">講者設定每組 ${m} 人</span></div></form></section>`;
+ const ros=rosterSorted();
+ return`<section class="stage">${stageHead('STEP 1 · 報到',`第 ${T.team} 組的組員`,'等組員都用自己的手機報到後，任何一個人按「大家都到了」就可以開始。驚喜任務會照下面的順序輪流。')}
+  <div class="ladder">${ros.map((e,i)=>`<div class="${e[0]===MYID?'now':''}"><i>${i+1}</i>${esc(e[1])}${e[0]===MYID?'（你）':''}</div>`).join('')}</div>
+  <div class="row"><button class="btn green" data-a="ready">大家都到了，下一步</button><span class="hint">目前 ${ros.length} 人・${syncText()}</span></div></section>`;
 }
 function sLogin(){
  const lines=['STAN TOWER SECURITY v7.0','個案編號 #07 ── 狀態：概念化未完成','主治諮商師留言：「越往下，越難觸及。找到他怎麼看自己，地下室的保險箱就會打開。」','<span class="warn">警告：每層樓有三盞警報燈。三盞全亮，整組封鎖，必須完成神秘的【驚喜任務】才能解除。</span>','連續答對 3 題可以拿到【警報遙控器】，按下別組的警報燈。答錯一題，連對就歸零。','輸入通行碼以啟動電梯。','提示：影響情緒的不是事件本身，而是我們對事件的＿＿＿'];
@@ -643,14 +656,16 @@ function sSurprise(){
   <div class="reveal-big">驚喜是……<br>一個神秘的<br><b>驚喜任務！</b></div>
   <p class="story">就算全部答對，也逃不過<b>行為實驗</b>。按下去看看任務內容，<b>不要被別組看到</b>。</p>
   <button class="btn gold" data-a="sur3">接受挑戰</button></div></section>`;}
+function memeSrc(i){return 'meme'+(((i%4)+4)%4+1)+'.jpg';}
 function sMeme(){return`<section class="stage"><div class="meme">${confetti()}<div class="big">我讓你壞壞！</div>
-  <img class="meme-img" src="meme.jpg" alt="">
+  <img class="meme-img" src="${memeSrc(T.team-1)}" alt="梗圖">
   <p class="who" style="font-size:clamp(1.2rem,4.5vw,1.6rem)">好吧！我也拿你沒轍，<br>我還能叫你摸什麼呢？<br>請繼續闖關囉</p>
   <p class="hint">你們組的每位組員都完成過驚喜任務了。</p>
   <button class="btn gold" data-a="memeok">繼續闖關</button></div></section>`;}
 function sHush(){const k=doneCount();const next=k<members()?memberName(k):'';
  return`<section class="stage"><div class="win" style="border-color:var(--exit);background:radial-gradient(circle at 50% 0%,rgba(63,210,122,.18),transparent 65%)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div>
   <div class="reveal-big">噓……<br>任務完成</div>
+  <img class="meme-img" src="${memeSrc(k-1)}" alt="梗圖" style="max-width:min(320px,80vw);max-height:48vh;object-fit:contain;border-radius:8px">
   <p class="story">回到座位時表情自然一點，<b>不要告訴別組</b>你們剛剛做了什麼。<br>接下來趕快連續答對 3 題拿到遙控器，把同樣的「驚喜」偷偷送給別組！${next?`<br>下一次輪到：<b>${esc(next)}</b>`:''}</p>
   <button class="btn green" data-a="hushok">知道了，繼續闖關</button></div></section>`;}
 function ladder(cur){return`<div class="ladder" aria-label="任務等級">${LEVELS.map((L,i)=>`<div class="${i<cur?'done':i===cur?'now':''}"><i>LV.${i+1}</i>${esc(L.t)}</div>`).join('')}</div>`;}
@@ -674,7 +689,8 @@ function renderTeam(){
  if(!T){renderLobby();return;}
  renderLift();
  let h;
- if(showFile)h=`<section class="stage">${caseFile()}<div class="row"><button class="btn green" data-a="file">關閉檔案，回到遊戲</button></div></section>`;
+ if(!T.my)h=sMyName();
+ else if(showFile)h=`<section class="stage">${caseFile()}<div class="row"><button class="btn green" data-a="file">關閉檔案，回到遊戲</button></div></section>`;
  else if(T.hush)h=sHush();
  else if(T.sur)h=sSurprise();
  else if(T.meme)h=sMeme();
@@ -689,7 +705,7 @@ function renderTeam(){
  $('#app').innerHTML=h+`<div class="foot"><span>第 ${T.team} 組 · <span id="syncinfo">${syncText()}</span> · <span id="netinfo">${netText()}</span></span><span><button data-a="switch">換組／重新開始</button></span></div>`;
  const lf=$('#loginf');if(lf)lf.addEventListener('submit',e=>{e.preventDefault();const v=($('#pw').value||'').trim();
    if(PASS.some(p=>v.includes(p))){T.auth=1;T.login.err=false;sfx.open();saveT();renderTeam();}else{T.login.err=true;sfx.bad();saveLocal();renderTeam();setTimeout(()=>{const i=$('#pw');if(i)i.focus();},0);}});
- const nf=$('#namesf');if(nf)nf.addEventListener('submit',e=>{e.preventDefault();T.names=Array.from({length:members()},(_,i)=>(($('#nm'+i)||{}).value||'').trim().slice(0,10));T.nd=1;saveT();renderTeam();});
+ const mf=$('#myf');if(mf)mf.addEventListener('submit',e=>{e.preventDefault();const v=(($('#myname')||{}).value||'').trim().slice(0,10);if(!v){showToast('bad','請輸入名字');return;}ls.set('tower-my-name',v);T.my={id:MYID,n:v,t:Date.now()};mergeRoster([[MYID,v,T.my.t]]);saveT();renderTeam();window.scrollTo(0,0);});
  const mi=$('.meme-img');if(mi)mi.addEventListener('error',()=>mi.remove());
  const d=$('#dark');if(d)wireDark(d);
 }
@@ -717,7 +733,7 @@ function absorb(peers){
  const seen={};feed=fd.filter(z=>seen[z.id]?0:(seen[z.id]=1)).sort((a,b)=>b.t-a.t).slice(0,4);
  Object.keys(H.teams).forEach(k=>{H.teams[k].online=false;});
  Object.entries(best).forEach(([n,pr])=>{H.teams[n]={stage:Math.min(6,Math.max(0,+pr.stage||0)),strikes:+pr.strikes||0,locked:!!pr.locked,startedAt:+pr.sa||0,finishedAt:+pr.fa||0,
-   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,online:true};
+   toilet:Array.isArray(pr.toilet)?pr.toilet.filter(r=>Array.isArray(r)).map(r=>[Math.max(0,Math.min(100,+r[0]||0)),Math.max(0,Math.min(100,+r[1]||0))]).slice(0,8):[],charges:Math.min(2,Math.max(0,+pr.ch||0)),bonus:!!pr.bonus,mem:(pr.st&&Array.isArray(pr.st.rs))?Math.min(8,pr.st.rs.length):0,online:true};
   if(+n>H.n)H.n=+n;});
  autoWin();saveH();renderHost();
 }
@@ -755,7 +771,7 @@ function renderHost(){
   const st=v.locked?(v.bonus?'<b style="color:var(--amber)">大獲全勝・驚喜任務中</b>':'<b class="led">警報！驚喜任務中</b>'):v.stage>=6?`<b style="color:var(--exit)">逃脫成功${v.startedAt&&v.finishedAt?' '+mmss(v.finishedAt-v.startedAt):''}</b>${won.findIndex(w=>+w[0]===n)>=0?` · 第 ${won.findIndex(w=>+w[0]===n)+1} 名`:''}`:v.stage===0?'<span class="dim">準備中</span>':esc(STAGES[v.stage]);
   const segs=['1F','B1','B2','B3','出口'].map((l,k)=>{const f=k+1;return`<div class="seg ${v.stage>f?'done':v.stage===f?'now':''}">${l}</div>`}).join('');
   const al=[0,1,2].map(k=>`<i class="${v.locked||k<v.strikes?'on':''}"></i>`).join('');
-  return`<div class="trow ${v.locked?'locked siren':''} ${v.stage>=6?'won':''}"><div class="tname"><span class="dot ${v.online?'on':''}"></span>TEAM ${n}<small>${v.online?(devTeam[n]||0)+' 台在線':'離線'}${v.toilet&&v.toilet.length?' · 任務 '+v.toilet.length+' 次':''}</small></div>
+  return`<div class="trow ${v.locked?'locked siren':''} ${v.stage>=6?'won':''}"><div class="tname"><span class="dot ${v.online?'on':''}"></span>TEAM ${n}<small>${v.online?(devTeam[n]||0)+' 台在線':'離線'}${v.mem?' · '+v.mem+' 人報到':''}${v.toilet&&v.toilet.length?' · 任務 '+v.toilet.length+' 次':''}</small></div>
    <div class="segs">${segs}</div><div class="tstat">${st}<div class="al">${al}</div>${v.charges?`<div class="hint" style="color:var(--led)">遙控器 ×${v.charges}</div>`:''}${v.online?'':`<div class="manual"><button data-a="man" data-n="${n}" data-d="-1" aria-label="第${n}組手動退一層">◀</button><button data-a="man" data-n="${n}" data-d="1" aria-label="第${n}組手動進一層">▶</button></div>`}</div></div>`}).join('');
  const roomBar=net.mode==='mqtt'?`<div class="hostbar"><div><div class="hint">房間代碼</div><div class="code">${esc(ROOM)}</div></div><div><div class="hint">各組用手機掃描 QR code，或打開這個網址：</div><div class="url">${esc(joinUrl())}</div><div class="hint" style="margin-top:6px">連線狀態：${netText()}</div></div><div id="qr" aria-label="加入遊戲的 QR code"></div></div>`
   :`<div class="hint" style="margin-top:8px">連線狀態：${netText()}。各組打開同一個網址、選擇組別即可。</div>`;
@@ -764,7 +780,6 @@ function renderHost(){
   <div style="text-align:right"><div class="clock ${c.over?'':'ok'}" id="clock">${c.over?'00:00':c.t}</div>
   <div class="row" style="justify-content:flex-end;margin-top:8px">${c.run?`<button class="btn ghost" data-a="pause">暫停</button>`:`<button class="btn red" data-a="start">${H.start?'繼續':'開始計時'}</button>`}<button class="btn ghost" data-a="treset">時間歸零</button>${H.confirm?`<span class="hint" style="color:var(--text)">清除所有組別進度？</span><button class="btn red" data-a="hry">確定重設</button><button class="btn ghost" data-a="hrn">取消</button>`:`<button class="btn ghost" data-a="hr">重設整個遊戲</button>`}</div>
   <div class="row" style="justify-content:flex-end;margin-top:8px"><select class="sel" id="dur" data-a="dur" aria-label="時間長度">${[20,25,30,35,40,45,50].map(m=>`<option value="${m}" ${H.dur===m?'selected':''}>${m} 分鐘</option>`).join('')}</select>
-  <select class="sel" id="mem" data-a="mem" aria-label="每組人數">${[2,3,4,5,6].map(m=>`<option value="${m}" ${(H.mem||4)===m?'selected':''}>每組 ${m} 人</option>`).join('')}</select>
   <button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button></div></div></div>
   ${roomBar}
   ${H.surprise&&!H.surDismiss?`<div class="win" style="margin-top:16px">${confetti()}<div class="eyebrow">ALL CLEAR</div><h1>大獲全勝！</h1>
@@ -795,8 +810,8 @@ function onNet(){if(mode()==='host')absorb(net.peers);else onTeamNet();}
 function render(){if(mode()==='host')absorb(net.peers);else renderTeam();}
 function enterMode(){
  if(mode()==='host'){
-  if(net.mode==='mqtt'&&!ROOM){const c=ls.get('tower-host-room','')||Array.from({length:5},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');setRoom(c);}
-  if(net.mode==='mqtt'){ls.set('tower-host-room',ROOM);if(!window.QRCode)loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').then(()=>renderHost()).catch(()=>{});}
+  
+  if(net.mode==='mqtt'){if(!window.QRCode)loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').then(()=>renderHost()).catch(()=>{});}
   startNet();hostPresence();
  }else{startNet();pushTeam();}
  render();
@@ -828,9 +843,10 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='file'){showFile=!showFile;zapOpen=false;renderTeam();window.scrollTo(0,0);return;}
  if(a==='zap'){zapOpen=!zapOpen;if(zapOpen)onTeamNet();renderLift();return;}
  if(a==='zapt'){zapTeam(+el.dataset.n);return;}
+ if(a==='ready'){if(!T.my)return;T.nd=1;sfx.open();saveT();renderTeam();return;}
  if(a==='hushok'){T.hush=0;saveT();renderTeam();return;}
  if(a==='memeok'){T.meme=0;T.strikes=0;saveT();renderTeam();return;}
- if(T.hush||T.meme||showFile)return;
+ if(!T.my||T.hush||T.meme||showFile)return;
  if(a==='sur2'){T.sur=2;sfx.open();saveT();renderTeam();return;}
  if(a==='sur3'){T.sur=0;triggerTask(true);saveT();renderTeam();window.scrollTo(0,0);return;}
  if(T.sur)return;
