@@ -317,6 +317,10 @@ img{max-width:100%}
 .waitwho .dot{flex:none;width:16px;height:16px;border-radius:50%;background:var(--led);box-shadow:0 0 12px var(--led);animation:wpulse 1.2s ease-in-out infinite}
 @keyframes wpulse{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.waitwho .dot{animation:none}}
+
+.corey{display:grid;gap:10px;justify-items:center;text-align:center;border:2px dashed var(--amber);border-radius:10px;padding:14px;background:radial-gradient(circle at 50% 20%,rgba(244,185,66,.14),transparent 70%)}
+.corey p{margin:0;font-family:var(--f-title);font-weight:900;font-size:clamp(1.25rem,5vw,1.7rem);color:var(--amber);line-height:1.3}
+.corey img{max-width:min(280px,72vw);max-height:32vh;object-fit:contain;border-radius:8px}
 </style>
 </head>
 <body>
@@ -497,6 +501,7 @@ let penProxy=false;
 function nextWho(afterId){const ros=rosterSorted();if(!ros.length)return '';const done=new Set((T.toilet||[]).map(x=>x.w).filter(Boolean));
  const st=afterId?ros.findIndex(e=>e[0]===afterId)+1:0;const order=ros.map((_,i)=>ros[(st+i)%ros.length][0]);
  return order.find(id=>!done.has(id)&&id!==afterId)||order.find(id=>id!==afterId)||order[0];}
+function whoIdx(p){const i=rosterSorted().findIndex(e=>e[0]===p.who);return i>=0?i:doneCount();}
 function whoName(id){const e=rosterSorted().find(x=>x[0]===id);return e?e[1]:memberName(doneCount());}
 function saveT(){T.rev=(T.rev||0)+1;ls.set(TKEY,T);pushTeam();}
 function saveLocal(){ls.set(TKEY,T);pushTeam();}
@@ -732,23 +737,23 @@ function sSurprise(){
   <div class="reveal-big">驚喜是……<br>一個神秘的<br><b>驚喜任務！</b></div>
   <p class="story">就算全部答對，也逃不過<b>行為實驗</b>。按下去看看任務內容，<b>不要被別組看到</b>。</p>
   <button class="btn gold" data-a="sur3">接受挑戰</button></div></section>`;}
-function memeSrc(i){return 'meme'+(((i%4)+4)%4+1)+'.jpg';}
+function memeSrc(i){return 'meme'+(((i%5)+5)%5+1)+'.jpg';}
 function sMeme(){return`<section class="stage"><div class="meme">${confetti()}<div class="big">我讓你壞壞！</div>
-  <img class="meme-img" src="${memeSrc(T.team-1)}" alt="梗圖">
+  <img class="meme-img" src="done-all.jpg" alt="梗圖">
   <p class="who" style="font-size:clamp(1.2rem,4.5vw,1.6rem)">好吧！我也拿你沒轍，<br>我還能叫你摸什麼呢？<br>請繼續闖關囉</p>
   <p class="hint">你們組的每位組員都完成過驚喜任務了。</p>
   <button class="btn gold" data-a="memeok">繼續闖關</button></div></section>`;}
 function sHush(){const k=doneCount();const nid=k<members()?nextWho(''):'';const next=nid?whoName(nid):(k<members()?memberName(k):'');
  return`<section class="stage"><div class="win" style="border-color:var(--exit);background:radial-gradient(circle at 50% 0%,rgba(63,210,122,.18),transparent 65%)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div>
   <div class="reveal-big">噓……<br>任務完成</div>
-  <img class="meme-img" src="${memeSrc(k-1)}" alt="梗圖" style="max-width:min(320px,80vw);max-height:48vh;object-fit:contain;border-radius:8px">
   <p class="story">回到座位時表情自然一點，<b>不要告訴別組</b>你們剛剛做了什麼。<br>接下來趕快連續答對 3 題拿到警報手榴彈，把同樣的「驚喜」偷偷送給別組！${next?`<br>下一次輪到：<b>${esc(next)}</b>`:''}</p>
   <button class="btn green" data-a="hushok">知道了，繼續闖關</button></div></section>`;}
 function ladder(cur){return`<div class="ladder" aria-label="任務等級">${LEVELS.map((L,i)=>`<div class="${i<cur?'done':i===cur?'now':''}"><i>LV.${i+1}</i>${esc(L.t)}</div>`).join('')}</div>`;}
 function sLock(){
  const p=T.pen;const L=LEVELS[Math.min(p.lv||0,LEVELS.length-1)];const nm=whoName(p.who);
  const mine=!p.who||p.who===MYID||penProxy||!rosterSorted().some(e=>e[0]===p.who);
- const head=p.surprise?`<div class="eyebrow">SURPRISE · BONUS</div><h1 style="color:var(--amber)">驚喜任務</h1>`:`<div class="eyebrow" style="color:var(--led)">ALARM · LOCKDOWN</div><h1 style="color:var(--led)">警報！全組封鎖</h1>`;
+ const corey=p.surprise?'':`<div class="corey"><p>吼～你是不是還沒跟 Corey 當好朋友！</p><img class="meme-img" src="${memeSrc(whoIdx(p))}" alt="梗圖"></div>`;
+ const head=p.surprise?`<div class="eyebrow">SURPRISE · BONUS</div><h1 style="color:var(--amber)">驚喜任務</h1>`:`<div class="eyebrow" style="color:var(--led)">ALARM · LOCKDOWN</div><h1 style="color:var(--led)">警報！全組封鎖</h1>`+corey;
  const skip=`<button class="btn ghost" data-a="penskip">不想做，換下一位組員</button>`;
  if(!mine)return`<section class="stage"><div class="lock ${p.surprise?'bonus':'siren'}">${head}
   <div class="waitwho"><span class="dot" aria-hidden="true"></span><p class="who"><b>${esc(nm)}</b><br>${p.phase===0?'正在寫預測……':'已經出發去做任務了！'}</p></div>
@@ -773,7 +778,7 @@ function sClass(){
   <p class="story">遊戲結束前，諮商師要送<b>每一個人</b>一份禮物。這次不分組，每個人都要自己完成。</p>
   <button class="gift" data-a="ct1" aria-label="打開禮物"><span>點我打開</span></button><div style="height:1.6em"></div></div></section>`;
  if(c.done)return`<section class="stage"><div class="win" style="border-color:var(--exit)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div><div class="reveal-big">完成了！</div>
-  <img class="meme-img" src="${memeSrc(Math.floor(Math.random()*4))}" alt="梗圖" style="max-width:min(300px,80vw);max-height:45vh;object-fit:contain;border-radius:8px">
+  <img class="meme-img" src="${memeSrc(Math.floor(Math.random()*5))}" alt="梗圖" style="max-width:min(300px,80vw);max-height:45vh;object-fit:contain;border-radius:8px">
   <p class="story">你預測 <b>${c.pre}</b> 分，實際是 <b>${c.post}</b> 分。等一下看看全班的結果！</p>
   <button class="btn green" data-a="ctclose">回到遊戲</button></div></section>`;
  const step0=`<div class="fld"><label for="ctpre">摸之前：你有多抗拒？（0–100）</label><div class="rng"><input type="range" id="ctpre" min="0" max="100" step="5" value="${c.pre}" data-a="ctr" data-k="pre"><output>${c.pre}</output></div></div>
@@ -903,27 +908,27 @@ function awards(){
  const wr=topBy(v=>v.wa||0,x=>x>0);
  if(wr)out.push({icon:'📋',name:'計畫趕不上變化獎',who:teamList(wr.ns),stat:'全場答錯最多次：'+wr.v+' 次',img:'aw-plan.jpg'});
  const toil=topBy(v=>(v.toilet||[]).length,x=>x>0);
- out.push(toil?{icon:'🚽',name:'馬桶之王獎',who:teamList(toil.ns),stat:'完成驚喜任務 '+toil.v+' 次'+(teamView(toil.ns[0]).mem&&toil.v>=teamView(toil.ns[0]).mem?'，全員都摸過了！':''),img:'meme2.jpg'}
-  :{icon:'🚽',name:'馬桶之王獎',who:'從缺',stat:'居然沒有人摸到馬桶？太神了',img:'meme2.jpg'});
+ out.push(toil?{icon:'🚽',name:'馬桶之王獎',who:teamList(toil.ns),stat:'完成驚喜任務 '+toil.v+' 次'+(teamView(toil.ns[0]).mem&&toil.v>=teamView(toil.ns[0]).mem?'，全員都摸過了！':''),img:'aw-toilet.jpg'}
+  :{icon:'🚽',name:'馬桶之王獎',who:'從缺',stat:'居然沒有人摸到馬桶？太神了',img:'aw-toilet.jpg'});
  const snip=topBy(v=>v.zs||0,x=>x>0);
  out.push(snip?{icon:'🎯',name:'神射手獎',who:teamList(snip.ns),stat:'丟警報手榴彈炸了別組 '+snip.v+' 次。有罪惡感，但還是想丟',img:'aw-homer.jpg'}
-  :{icon:'🕊️',name:'和平使者獎',who:'全班',stat:'沒有人丟警報手榴彈，好善良',img:'meme4.jpg'});
+  :{icon:'🕊️',name:'和平使者獎',who:'全班',stat:'沒有人丟警報手榴彈，好善良',img:'aw-peace.jpg'});
  const hit=topBy(v=>v.hit||0,x=>x>0);
  out.push(hit?{icon:'🏃',name:'天選之組獎',who:teamList(hit.ns),stat:'被別組的手榴彈炸了 '+hit.v+' 次，快逃！',img:'aw-run.jpg'}
-  :{icon:'📸',name:'全班大合照獎',who:'全班',stat:'每一組都平安無事，一起畢業吧',img:'meme1.jpg'});
- let gap=null;
- Object.values(H.ctRes||{}).forEach(r=>{if(r.done&&r.pre-r.post>0&&(!gap||r.pre-r.post>gap.d))gap={d:r.pre-r.post,who:r.n||'某位同學',pre:r.pre,post:r.post};});
- if(!gap)for(let n=1;n<=H.n;n++)(teamView(n).toilet||[]).forEach(r=>{if(r[0]-r[1]>0&&(!gap||r[0]-r[1]>gap.d))gap={d:r[0]-r[1],who:'第 '+n+' 組',pre:r[0],post:r[1]};});
- if(gap)out.push({icon:'🧠',name:'腦補大師獎',who:gap.who,stat:'摸之前預測 '+gap.pre+' 分，摸完只有 '+gap.post+' 分。想像中的馬桶比較可怕',img:'aw-doge.jpg'});
- const fast=topBy(v=>(v.stage>=6&&v.startedAt&&v.finishedAt)?-(v.finishedAt-v.startedAt):null,x=>true);
- if(fast){const w=teamView(fast.ns[0]).wa||0;out.push({icon:'🏆',name:'第一名',who:teamList(fast.ns),stat:'最快逃出 Stan 的心智大樓：只花了 '+mmss(-fast.v)+'，'+(w?'只答錯 '+w+' 次':'零失誤！'),img:'aw-win.jpg'});}
+  :{icon:'🫶',name:'全班好朋友獎',who:'全班',stat:'沒有人被手榴彈炸到，大家都是好朋友',img:'aw-photo.jpg'});
+ let gap=null;const add=(d,who,pre,post)=>{if(d<=0)return;if(!gap||d>gap.d)gap={d,list:[who],pre,post};else if(d===gap.d&&!gap.list.includes(who))gap.list.push(who);};
+ Object.values(H.ctRes||{}).forEach(r=>{if(r.done)add(r.pre-r.post,r.n||'某位同學',r.pre,r.post);});
+ if(!gap)for(let n=1;n<=H.n;n++)(teamView(n).toilet||[]).forEach(r=>add(r[0]-r[1],'第 '+n+' 組',r[0],r[1]));
+ if(gap)out.push({icon:'🧠',name:'腦補大師獎',who:gap.list.join('、'),stat:(gap.list.length>1?'預測和實際都差了 '+gap.d+' 分':'摸之前預測 '+gap.pre+' 分，摸完只有 '+gap.post+' 分')+'。想像中的馬桶比較可怕',img:'aw-doge.jpg'});
+ const fast=topBy(v=>(v.stage>=6&&v.startedAt&&v.finishedAt)?-Math.round((v.finishedAt-v.startedAt)/1000)*1000:null,x=>true);
+ if(fast){const w=fast.ns.length>1?null:(teamView(fast.ns[0]).wa||0);out.push({icon:'🏆',name:fast.ns.length>1?'並列第一名':'第一名',who:teamList(fast.ns),stat:'最快逃出 Stan 的心智大樓：只花了 '+mmss(-fast.v)+(w==null?'，同秒逃脫！':'，'+(w?'只答錯 '+w+' 次':'零失誤！')),img:'aw-win.jpg'});}
  else{const deep=topBy(v=>v.stage||0,x=>x>0);out.push({icon:'🏆',name:'第一名',who:deep?teamList(deep.ns):'全班',stat:deep?'闖得最深，到了 '+STAGES[Math.min(6,deep.v)]:'大家都還在大廳徘徊',img:'aw-win.jpg'});}
  return out;
 }
 function showHTML(){
  const A=awards();const last=showIdx>=A.length;
  const body=last?`<div class="showcard" style="grid-template-columns:minmax(0,1fr);text-align:center;justify-items:center"><div class="eyebrow">NEXT</div><div class="reveal-big">接下來揭曉：<br><b>驚喜任務</b>到底是什麼？</div><button class="btn red" data-a="showreveal">揭曉實驗結果</button></div>`
-  :(()=>{const w=A[showIdx];return`<div class="showcard"><div class="showtxt"><div class="eyebrow">梗圖大放送・${showIdx+1} / ${A.length}</div><div class="awicon" aria-hidden="true">${w.icon}</div><h2 class="awname">${esc(w.name)}</h2><div class="awwho">${esc(w.who)}</div><p class="awstat">${esc(w.stat)}</p></div><img class="showimg" src="${w.img}" alt="梗圖"></div>`;})();
+  :(()=>{const w=A[showIdx];return`<div class="showcard"><div class="showtxt"><div class="eyebrow">梗圖大放送・${showIdx+1} / ${A.length}</div><div class="awicon" aria-hidden="true">${w.icon}</div><h2 class="awname">${esc(w.name)}</h2><div class="awwho">${esc(w.who)}</div><p class="awstat">${esc(w.stat)}</p></div><img class="showimg" src="${w.img}" alt="梗圖" onerror="this.remove()"></div>`;})();
  return`<div class="show" role="dialog" aria-label="梗圖大放送">${confetti()}${body}
   <div class="showbar"><button class="btn ghost" data-a="showprev" ${showIdx<=0?'disabled':''}>上一個</button>${last?'':`<button class="btn gold" data-a="shownext">${showIdx===A.length-1?'最後一步':'下一個獎'}</button>`}<button class="btn ghost" data-a="showclose">關閉</button></div></div>`;
 }
