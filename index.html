@@ -415,7 +415,12 @@ const music={on:false,n:null,
 const params=new URLSearchParams(location.search);
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const DEV=Math.random().toString(36).slice(2,10);
-let ROOM=(params.get('room')||'1234').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8)||'1234';
+const cleanCode=v=>String(v||'').replace(/[^0-9]/g,'').slice(0,4);
+const newCode=()=>String(1000+Math.floor(Math.random()*9000));
+/* 房間代碼：隨機 4 位數。監控室第一次打開時產生並記住；同學掃 QR（網址帶 ?room=）或自己輸入 */
+let ROOM=cleanCode(params.get('room'));if(ROOM.length!==4)ROOM='';
+if(!ROOM&&location.hash==='#host'){ROOM=cleanCode(ls.get('tower-host-room',''));if(ROOM.length!==4)ROOM=newCode();}
+if(ROOM)ls.set(location.hash==='#host'?'tower-host-room':'tower-room',ROOM);
 const net={mode:IN_CLAUDE?'claude':'mqtt',state:'connecting',peers:[],me:{role:'lobby'},keys:[],timer:0,links:0};
 function netEmit(){onNet();}
 function netSet(obj){net.me=obj;clearTimeout(net.timer);net.timer=setTimeout(netPush,120);}
@@ -440,17 +445,17 @@ function startMqtt(){
  net.state='connecting';netEmit();
  loadScript('https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js').then(()=>{
   const urls=params.get('broker')?params.get('broker').split(',').filter(Boolean):BROKERS;
-  const base='stantower/v2/'+ROOM+'/p/';net.base=base;net.clients=[];
+  const base='stantower/v2/'+ROOM+'/p/';net.base=base;net.clients=[];const gen=net.gen=(net.gen||0)+1;const mine=net.clients;
   const maps=urls.map(()=>({}));
   /* 用「收到的時間」判斷裝置是否還在線，不比對各裝置的時鐘（電腦時間不準也能同步） */
-  const rebuild=()=>{const now=Date.now();const best={};
+  const rebuild=()=>{if(gen!==net.gen)return;const now=Date.now();const best={};
    maps.forEach(m=>Object.values(m).forEach(p=>{if(!p.isMe&&now-p.seen>95000)return;if(p.ts&&Math.abs(now-p.ts)>43200000)return;const cur=best[p.id];if(!cur||p.ts>cur.ts)best[p.id]=p;}));
    net.peers=Object.values(best);netEmit();};
-  const upd=()=>{const n=net.clients.filter(c=>c.connected).length;net.links=n;net.state=n?'live':'reconnecting';};
+  const upd=()=>{if(gen!==net.gen)return;const n=mine.filter(c=>c.connected).length;net.links=n;net.state=n?'live':'reconnecting';};
   urls.forEach((url,i)=>{
    const c=window.mqtt.connect(url,{clientId:'st_'+DEV+'_'+i,clean:true,keepalive:20,reconnectPeriod:3000,connectTimeout:8000,will:{topic:base+DEV,payload:'',retain:true,qos:0}});
-   net.clients.push(c);const map=maps[i];
-   c.on('connect',()=>{c.subscribe(base+'+');upd();netPush();netEmit();});
+   mine.push(c);const map=maps[i];
+   c.on('connect',()=>{if(gen!==net.gen){try{c.end(true);}catch(e){}return;}c.subscribe(base+'+');upd();netPush();netEmit();});
    c.on('reconnect',()=>{upd();netEmit();});
    c.on('offline',()=>{upd();netEmit();});
    c.on('close',()=>{upd();netEmit();});
@@ -459,21 +464,23 @@ function startMqtt(){
     if(!str)delete map[id];else{try{const o=JSON.parse(str);if(o&&typeof o==='object'&&str.length<6000)map[id]={id,isMe:id===DEV,presence:o,ts:+o._ts||0,seen:Date.now()};}catch(e){}}
     rebuild();});
   });
-  setInterval(()=>{netPush();rebuild();},25000);
-  window.addEventListener('pagehide',()=>{net.clients.forEach(c=>{try{c.publish(base+DEV,'',{retain:true});}catch(e){}});});
+  clearInterval(net.iv);net.iv=setInterval(()=>{netPush();rebuild();},25000);
+  window.addEventListener('pagehide',()=>{mine.forEach(c=>{try{c.publish(base+DEV,'',{retain:true});}catch(e){}});});
  }).catch(()=>{net.state='off';netEmit();});
 }
 function startNet(){if(net.mode==='claude')startClaude();else startMqtt();}
-function setRoom(code){ROOM=code;const u=new URL(location.href);u.searchParams.set('room',code);history.replaceState(null,'',u.toString());}
+function setRoom(code){ROOM=code;ls.set(mode()==='host'?'tower-host-room':'tower-room',code);const u=new URL(location.href);u.searchParams.set('room',code);history.replaceState(null,'',u.toString());}
+function netRestart(){if(net.clients){net.clients.forEach(c=>{try{c.publish(net.base+DEV,'',{retain:true});c.end(true);}catch(e){}});net.clients=null;}net.peers=[];if(net.mode==='mqtt')startMqtt();}
 function joinUrl(){const u=new URL(location.href);u.hash='';u.searchParams.set('room',ROOM);u.searchParams.delete('broker');if(params.get('broker'))u.searchParams.set('broker',params.get('broker'));return u.toString();}
 function netText(){return net.state==='live'?(net.mode==='claude'?'已連線':'已連線（房間 '+ROOM+(net.clients&&net.clients.length>1?'・'+net.links+'/'+net.clients.length+' 條線路':'')+'）'):net.state==='noroom'?'尚未輸入房間代碼':net.state==='off'?'無法連線（仍可遊玩）':'連線中…';}
 
 /* ================= team state ================= */
 const TKEY='tower-team-v2';
-function freshTeam(n){return{team:n,rev:0,createdAt:Date.now(),stage:0,strikes:0,locked:false,pen:null,toilet:[],startedAt:0,finishedAt:0,streak:0,charges:0,zaps:[],applied:[],sur:0,surSeen:[],hush:0,meme:0,
+function freshTeam(n){return{room:ROOM,team:n,rev:0,createdAt:Date.now(),stage:0,strikes:0,locked:false,pen:null,toilet:[],startedAt:0,finishedAt:0,streak:0,charges:0,zaps:[],applied:[],sur:0,surSeen:[],hush:0,meme:0,
  roster:[],my:null,nd:0,auth:0,zs:0,hit:0,s1:{placed:{},cur:0,msg:null},s2:{pins:[],msg:null,done:false},s3:{asked:[]},s4:{d:[0,0,0],msg:null,open:false},s5:{flip:[],wrong:[]},login:{err:false}};}
 let T=ls.get(TKEY,null);
 if(T&&!T.s1)T=null;
+if(T&&net.mode==='mqtt'&&T.room&&T.room!==ROOM)T=null;
 const MYID=(()=>{let v=ls.get('tower-me-id','');if(!/^[a-z0-9]{6,12}$/.test(v)){v=Math.random().toString(36).slice(2,10);ls.set('tower-me-id',v);}return v;})();
 let hostN=0;
 let others={},teamCounts={},sameCount=1,hostMem=ls.get('tower-mem',4),zapOpen=false,showFile=false,lobbyDevs=0;
@@ -605,12 +612,12 @@ function renderLobby(){
  $('#app').innerHTML=`<section class="stage"><div class="eyebrow">MIND ESCAPE · CASE #07</div>
   <h1>心智大逃脫</h1>
   <p class="story">深夜十一點。個案 Stan 的檔案被鎖在他的心智大樓裡，主治諮商師只留下一句話：<b>「越往深處，越難觸及。」</b>你們要從<b>表層</b>出發，經過<b>中層</b>，在<b>樓梯間</b>找到解開 Stan 心智的線索，再走到<b>深層</b>，把他的個案概念化拼完整，才能從出口逃脫成功。</p>
-  ${needRoom?`<form id="roomf" class="fld"><label for="roomcode">輸入大螢幕上的房間代碼</label><div class="row"><input id="roomcode" class="codein" maxlength="8" autocomplete="off" autocapitalize="characters" inputmode="latin"><button class="btn green">進入</button></div></form>`
+  ${needRoom?`<form id="roomf" class="fld"><label for="roomcode">輸入大螢幕上的 4 位數房間代碼</label><div class="row"><input id="roomcode" class="codein" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="0000" value="${esc(ls.get('tower-room',''))}"><button class="btn green">進入</button></div><p class="hint">掃大螢幕上的 QR code 就不用輸入。</p></form>`
   :`<h2 style="font-size:1.1rem">你們是第幾組？</h2>
   <div class="teams">${Array.from({length:hostN||8},(_,i)=>i+1).map(n=>`<button data-a="pick" data-n="${n}">TEAM ${n}${teamCounts[n]?`<small style="display:block;font-size:.7rem;color:var(--exit)">${teamCounts[n]} 台已加入</small>`:''}</button>`).join('')}</div>
-  <p class="hint">同一組的手機請選同一個組別，進度會自動同步。建議一台手機負責操作，其他人跟著看。${net.mode==='mqtt'?'房間 '+esc(ROOM)+'・':''}<span id="netinfo">${netText()}</span></p>`}
+  <p class="hint">同一組的手機請選同一個組別，進度會自動同步。建議一台手機負責操作，其他人跟著看。${net.mode==='mqtt'?'房間 '+esc(ROOM)+'・':''}<span id="netinfo">${netText()}</span>${net.mode==='mqtt'?' <button class="iconbtn" data-a="chroom">換房間</button>':''}</p>`}
 </section>`;
- const f=$('#roomf');if(f)f.addEventListener('submit',e=>{e.preventDefault();const v=($('#roomcode').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(v.length<3){showToast('bad','代碼至少 3 個字');return;}setRoom(v);startMqtt();renderLobby();});
+ const f=$('#roomf');if(f)f.addEventListener('submit',e=>{e.preventDefault();const v=cleanCode($('#roomcode').value);if(v.length!==4){showToast('bad','房間代碼是 4 位數字');return;}setRoom(v);const st=ls.get(TKEY,null);if(st&&st.s1&&st.room===v){T=st;netRestart();renderTeam();return;}netRestart();pushTeam();renderLobby();});
 }
 let hostDur=0,showRules=false;
 function rulesHTML(big){const dur=mode()==='host'?H.dur:hostDur;
@@ -817,10 +824,12 @@ function wireDark(d){
 
 /* ================= host ================= */
 const HKEY='tower-host-v2';
-let H=ls.get(HKEY,{n:5,mem:4,teams:{},manual:{},dur:40,start:0,paused:0,reveal:false,confirm:false});
+const DURS=[15,20,25,30];
+let H=ls.get(HKEY,{n:5,mem:4,teams:{},manual:{},dur:20,start:0,paused:0,reveal:false,confirm:false});
+if(!DURS.includes(H.dur))H.dur=20;
 let feed=[],surConfirm=false,devTotal=0,devTeam={},devLobby=0;
 function saveH(){ls.set(HKEY,H);}
-function hostPresence(){if(mode()!=='host')return;netSet({role:'host',n:H.n||5,dur:H.dur||40,mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,ct:H.ct||null,ctAt:H.ctAt||0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
+function hostPresence(){if(mode()!=='host')return;netSet({role:'host',n:H.n||5,dur:H.dur||20,mem:H.mem||4,surprise:H.surprise||null,surpriseAt:H.surpriseAt||0,surpriseAll:H.surpriseAll?1:0,ct:H.ct||null,ctAt:H.ctAt||0,resetId:H.resetId||null,resetAt:H.resetAt||0});}
 function absorb(peers){
  const best={};devTeam={};devLobby=0;devTotal=0;
  peers.forEach(p=>{if(p.isMe)return;const pr=p.presence||{};
@@ -864,7 +873,7 @@ function chart(){
  const ap=Math.round(recs.reduce((s,r)=>s+r.pre,0)/recs.length),aa=Math.round(recs.reduce((s,r)=>s+r.post,0)/recs.length);
  return s+`</svg><div class="legend"><span><i style="background:#FF3B30"></i>摸之前預測的抗拒程度</span><span><i style="background:#3FD27A"></i>摸完的實際感受</span></div><p style="margin:10px 0 0">全班平均：預測 <b class="led">${ap}</b> → 實際 <b style="color:var(--exit)">${aa}</b>（共 ${recs.length} 次）</p>`;
 }
-let showIdx=-1,ctConfirm=false;
+let showIdx=-1,ctConfirm=false,roomConfirm=false;
 function ctPanel(){
  if(!H.ct)return'';
  const R=Object.values(H.ctRes||{});const pred=R.filter(x=>x.pred).length,done=R.filter(x=>x.done);
@@ -929,13 +938,13 @@ function renderHost(){
   const al=[0,1,2].map(k=>`<i class="${v.locked||k<v.strikes?'on':''}"></i>`).join('');
   return`<div class="trow ${v.locked?'locked siren':''} ${v.stage>=6?'won':''}"><div class="tname"><span class="dot ${v.online?'on':''}"></span>TEAM ${n}<small>${v.online?(devTeam[n]||0)+' 台在線':'離線'}${v.mem?' · '+v.mem+' 人報到':''}${v.toilet&&v.toilet.length?' · 任務 '+v.toilet.length+' 次':''}</small></div>
    <div class="segs">${segs}</div><div class="tstat">${st}<div class="al">${al}</div>${v.charges?`<div class="hint" style="color:var(--led)">手榴彈 ×${v.charges}</div>`:''}${v.online?'':`<div class="manual"><button data-a="man" data-n="${n}" data-d="-1" aria-label="第${n}組手動退一層">◀</button><button data-a="man" data-n="${n}" data-d="1" aria-label="第${n}組手動進一層">▶</button></div>`}</div></div>`}).join('');
- const roomBar=net.mode==='mqtt'?`<div class="hostbar"><div><div class="hint">房間代碼</div><div class="code">${esc(ROOM)}</div></div><div><div class="hint">各組用手機掃描 QR code，或打開這個網址：</div><div class="url">${esc(joinUrl())}</div><div class="hint" style="margin-top:6px">連線狀態：${netText()}</div></div><div id="qr" aria-label="加入遊戲的 QR code"></div></div>`
+ const roomBar=net.mode==='mqtt'?`<div class="hostbar"><div><div class="hint">房間代碼</div><div class="code">${esc(ROOM)}</div><div class="row" style="margin-top:8px;gap:6px">${roomConfirm?`<span class="hint">同學要重新加入</span><button class="iconbtn" data-a="newroom">確定換</button><button class="iconbtn" data-a="roomn">取消</button>`:`<button class="iconbtn" data-a="newroom">換新代碼</button>`}</div></div><div><div class="hint">各組用手機掃描 QR code，或打開這個網址：</div><div class="url">${esc(joinUrl())}</div><div class="hint" style="margin-top:6px">連線狀態：${netText()}</div></div><div id="qr" aria-label="加入遊戲的 QR code"></div></div>`
   :`<div class="hint" style="margin-top:8px">連線狀態：${netText()}。各組打開同一個網址、選擇組別即可。</div>`;
  $('#app').innerHTML=`<section class="stage"><div class="host-top"><div><div class="eyebrow">心智大逃脫 · 監控室</div><h1>各組闖到哪一層</h1>
   <div class="row" style="margin-top:10px"><div class="online">${devTotal}<small>上線人數（裝置）</small></div><div class="hint">已選組 ${devTotal-devLobby} 台・在選組畫面 ${devLobby} 台</div></div></div>
   <div style="text-align:right"><div class="clock ${c.over?'':'ok'}" id="clock">${c.over?'00:00':c.t}</div>
   <div class="row" style="justify-content:flex-end;margin-top:8px">${c.run?`<button class="btn ghost" data-a="pause">暫停</button>`:`<button class="btn red" data-a="start">${H.start?'繼續':'開始計時'}</button>`}<button class="btn ghost" data-a="treset">時間歸零</button>${H.confirm?`<span class="hint" style="color:var(--text)">清除所有組別進度？</span><button class="btn red" data-a="hry">確定重設</button><button class="btn ghost" data-a="hrn">取消</button>`:`<button class="btn ghost" data-a="hr">重設整個遊戲</button>`}</div>
-  <div class="row" style="justify-content:flex-end;margin-top:8px"><select class="sel" id="dur" data-a="dur" aria-label="時間長度">${[20,25,30,35,40,45,50].map(m=>`<option value="${m}" ${H.dur===m?'selected':''}>${m} 分鐘</option>`).join('')}</select>
+  <div class="row" style="justify-content:flex-end;margin-top:8px"><select class="sel" id="dur" data-a="dur" aria-label="時間長度">${DURS.map(m=>`<option value="${m}" ${H.dur===m?'selected':''}>${m} 分鐘</option>`).join('')}</select>
   <button class="btn ghost" data-a="rules">遊戲規則</button>
   <button class="iconbtn" data-a="music">${music.on?'音樂：開':'音樂：關'}</button></div></div></div>
   ${roomBar}
@@ -974,7 +983,7 @@ function onNet(){if(mode()==='host')absorb(net.peers);else onTeamNet();}
 function render(){if(mode()==='host')absorb(net.peers);else renderTeam();}
 function enterMode(){
  if(mode()==='host'){
-  
+  if(net.mode==='mqtt'&&!ROOM){let c=cleanCode(ls.get('tower-host-room',''));if(c.length!==4)c=newCode();setRoom(c);if(net.clients)netRestart();}
   if(net.mode==='mqtt'){if(!window.QRCode)loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').then(()=>renderHost()).catch(()=>{});}
   startNet();hostPresence();
  }else{startNet();pushTeam();}
@@ -998,6 +1007,8 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='showprev'){showIdx=Math.max(0,showIdx-1);renderHost();return;}
  if(a==='showclose'){showIdx=-1;renderHost();return;}
  if(a==='showreveal'){showIdx=-1;H.reveal=true;saveH();renderHost();setTimeout(()=>{const el=$('.results');if(el)el.scrollIntoView({behavior:'smooth'});},50);return;}
+ if(a==='newroom'){if(!roomConfirm){roomConfirm=true;renderHost();return;}roomConfirm=false;let c=newCode();while(c===ROOM)c=newCode();setRoom(c);netRestart();hostPresence();renderHost();showToast('good','新的房間代碼：'+c+'，請同學重新掃 QR code');return;}
+ if(a==='roomn'){roomConfirm=false;renderHost();return;}
  if(a==='hr'){H.confirm=true;renderHost();return;}
  if(a==='hrn'){H.confirm=false;renderHost();return;}
  if(a==='sur'){surConfirm=true;renderHost();return;}
@@ -1016,6 +1027,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='ctdone'&&CT){CT.done=1;sfx.open();saveCT();renderTeam();window.scrollTo(0,0);return;}
  if(a==='ctskip'&&CT){CT.closed=1;CT.skip=1;saveCT();renderTeam();return;}
  if(a==='ctclose'&&CT){CT.closed=1;saveCT();renderTeam();return;}
+ if(a==='chroom'){ROOM='';netRestart();renderLobby();return;}
  if(a==='pick'){T=freshTeam(+el.dataset.n);ls.set(TKEY,T);onTeamNet();if(T&&!T.rev){saveT();}renderTeam();window.scrollTo(0,0);return;}
  if(!T)return;
  if(a==='switch'){T=null;ls.set(TKEY,null);showFile=false;zapOpen=false;pushTeam();renderTeam();return;}
