@@ -494,7 +494,7 @@ const EXP=[
 const PRED=['會很噁心，手感洗不掉','會沾到細菌、可能生病','別人會覺得我很髒','其實不會怎樣'];
 const ACT=['洗完手就沒事了','比想像中還好','跟預測的一樣不舒服','比預測的更不舒服'];
 const MAXS=5;
-const TASK='馬桶蓋的外面';
+const TASK='A406 旁廁所的小便斗或馬桶壁';
 /* 封鎖時的選擇題：這句想法屬於哪一種信念（Ellis 的非理性信念類型） */
 const QKIND=['絕對化要求','災難化','低挫折容忍','整體性貶抑','理性'];
 const QWHY=['用「一定要、必須、應該」把希望變成命令。','把一件不好的事想成最糟、無法挽回的大災難。','覺得自己「受不了、撐不下去」，低估自己承受不舒服的能力。','因為一件事，就否定整個人（自己或別人）。','有彈性、合乎現實：承認不舒服，但不誇大。'];
@@ -911,7 +911,7 @@ function memeSrc(i){return 'meme'+(((i%5)+5)%5+1)+'.jpg';}
 function sMeme(){return`<section class="stage"><div class="meme">${confetti()}<div class="big">我讓你壞壞！</div>
   <img class="meme-img" src="done-all.jpg" alt="梗圖">
   <p class="who" style="font-size:clamp(1.2rem,4.5vw,1.6rem)">好吧！我也拿你沒轍，<br>我還能叫你摸什麼呢？<br>請繼續闖關囉</p>
-  <p class="hint">你們組的每位組員都完成過驚喜任務了。</p>
+  <p class="hint">已經有組員為全組完成驚喜任務了。</p>
   <button class="btn gold" data-a="memeok">繼續闖關</button></div></section>`;}
 function sHush(){const k=doneCount();const nid=k<members()?nextWho(''):'';const next=nid?whoName(nid):(k<members()?memberName(k):'');
  return`<section class="stage"><div class="win" style="border-color:var(--exit);background:radial-gradient(circle at 50% 0%,rgba(63,210,122,.18),transparent 65%)"><div class="eyebrow" style="color:var(--exit)">MISSION COMPLETE</div>
@@ -959,12 +959,12 @@ function sClass(){
  const step0=`<div class="fld"><label for="ctpre">摸之前：你有多抗拒？（0–100）</label><div class="rng"><input type="range" id="ctpre" min="0" max="100" step="5" value="${c.pre}" data-a="ctr" data-k="pre"><output>${c.pre}</output></div></div>
   <div class="fld"><label for="ctpred">你預測，摸了會怎樣？</label><select class="sel" id="ctpred" data-a="cts" data-k="pred"><option value="">選一個預測</option>${PRED.map(x=>`<option ${c.pred===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   <div class="row"><button class="btn red" data-a="ctgo" ${c.pred?'':'disabled'}>預測完成，出發</button></div>`;
- const step1=`<div class="msg bad">去摸一下馬桶，然後洗手。回來再填下面。</div>
+ const step1=`<div class="msg bad">去摸一下「${TASK}」，然後洗手。回來再填下面。</div>
   <div class="fld"><label for="ctpost">摸完之後，實際感受有多不舒服？</label><div class="rng"><input type="range" id="ctpost" min="0" max="100" step="5" value="${c.post}" data-a="ctr" data-k="post"><output>${c.post}</output></div></div>
   <div class="fld"><label for="ctact">實際發生了什麼？</label><select class="sel" id="ctact" data-a="cts" data-k="act"><option value="">選一個</option>${ACT.map(x=>`<option ${c.act===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   <div class="row"><button class="btn green" data-a="ctdone" ${c.act?'':'disabled'}>回報結果</button></div>`;
  return`<section class="stage"><div class="lock bonus"><div class="eyebrow">FINAL SURPRISE · 每個人都要做</div><h1 style="color:var(--amber)">全班驚喜任務</h1>
-  <p class="who">任務：<b>每個人都去摸一下馬桶</b></p>
+  <p class="who">任務：<b>每個人都去摸一下「${TASK}」</b></p>
   <p class="story">先用<b>自己的手機</b>寫下你自己的預測，再去做，回來比對。不想摸的人可以不摸，按下面的「我選擇不參加」就好。</p>
   ${c.phase===0?step0:step1}
   <div class="row"><button class="btn ghost" data-a="ctskip">我選擇不參加</button></div></div></section>`;
@@ -1136,7 +1136,7 @@ function renderHost(){
   <div class="board">${rows}</div>
   <div class="surprise-box"><div><b style="color:var(--amber)">大獲全勝</b>　<button class="iconbtn" data-a="autotog" aria-pressed="${H.autoWin!==false}">自動：${H.autoWin===false?'關':'開'}</button><div class="hint">${H.surprise?`驚喜已送出${H.surpriseAt?' · '+new Date(H.surpriseAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):''}。`:H.autoWin===false?'自動已關閉，要送驚喜請按右邊的按鈕。':(H.start?'所有已開始的組別都逃脫後，會自動送出驚喜，沒做過驚喜任務的組別要接受挑戰。':'按下「開始計時」後啟動：所有已開始的組別都逃脫，就會自動送出驚喜。')}</div></div>
    <div class="row">${surConfirm?`<span>確定送給所有組別？</span><button class="btn gold" data-a="sury">送出</button><button class="btn ghost" data-a="surn">取消</button>`:`<button class="btn gold" data-a="sur" ${net.state==='live'?'':'disabled'}>${H.surprise?'再送一次（全部組別）':'手動送出驚喜'}</button>`}</div></div>
-  <div class="surprise-box"><div><b style="color:var(--amber)">全班驚喜任務</b><div class="hint">不分組、不管有沒有逃脫，每個人用自己的手機預測自己的分數，再一起去摸馬桶。</div></div>
+  <div class="surprise-box"><div><b style="color:var(--amber)">全班驚喜任務</b><div class="hint">不分組、不管有沒有逃脫，每個人用自己的手機預測自己的分數，再一起去摸 A406 旁廁所的小便斗或馬桶壁。</div></div>
    <div class="row">${ctConfirm?`<span>確定送給全班每一個人？</span><button class="btn gold" data-a="cty">送出</button><button class="btn ghost" data-a="ctn">取消</button>`:`<button class="btn gold" data-a="ctask" ${net.state==='live'?'':'disabled'}>${H.ct?'再送一次全班任務':'全班一起來：送出全班驚喜任務'}</button>`}</div></div>
   ${ctPanel()}
   <div class="row" style="margin-top:12px"><button class="btn ghost" data-a="tn" data-d="-1">少一組</button><button class="btn ghost" data-a="tn" data-d="1">多一組</button><span class="hint">目前 ${H.n} 組：同學的選組畫面只會出現第 1～${H.n} 組。</span></div>
