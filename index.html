@@ -427,6 +427,12 @@ img{max-width:100%}
   .qtray.one .qcards .qpc{--w:min(100px,calc((100vw - 96px)/3));--band:22px}
   .qround{font-size:.9rem;gap:4px 8px}
 }
+
+.qz{display:grid;gap:12px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;padding:16px}
+.qzq{margin:0;font-weight:700}
+.qz blockquote{margin:0;font-family:var(--f-title);font-size:clamp(1.15rem,4.6vw,1.5rem);line-height:1.5;border-left:4px solid var(--amber);padding:4px 0 4px 14px}
+.qzopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.qzopts .btn{font-size:1rem;padding:12px}
 </style>
 </head>
 <body>
@@ -487,6 +493,19 @@ const EXP=[
 ];
 const PRED=['會很噁心，手感洗不掉','會沾到細菌、可能生病','別人會覺得我很髒','其實不會怎樣'];
 const ACT=['洗完手就沒事了','比想像中還好','跟預測的一樣不舒服','比預測的更不舒服'];
+const MAXS=5;
+const TASK='馬桶蓋的外面';
+/* 封鎖時的選擇題：這句想法屬於哪一種信念（Ellis 的非理性信念類型） */
+const QKIND=['絕對化要求','災難化','低挫折容忍','整體性貶抑','理性'];
+const QWHY=['用「一定要、必須、應該」把希望變成命令。','把一件不好的事想成最糟、無法挽回的大災難。','覺得自己「受不了、撐不下去」，低估自己承受不舒服的能力。','因為一件事，就否定整個人（自己或別人）。','有彈性、合乎現實：承認不舒服，但不誇大。'];
+const QZ=[
+ {x:'我一定要考到好成績，否則就不應該。',k:0},{x:'這次考試失敗，我死定了，我的前途完了。',k:1},{x:'我無法忍受考試不及格的感覺。',k:2},
+ {x:'我考試不及格，我真是一個很笨的人。',k:3},{x:'這次考試的成績不理想，可能是因為我有些地方還沒準備好。',k:4},
+ {x:'指導教授交代的事，我一定要做到完美。',k:0},{x:'報告被老師問倒，我這學期就毀了。',k:1},{x:'讀這麼難的原文書，我真的受不了。',k:2},
+ {x:'我上台講錯一句話，我就是個沒用的人。',k:3},{x:'我希望報告順利，但就算被問倒，也能從中學到東西。',k:4},
+ {x:'別人一定要準時回我訊息。',k:0},{x:'論文進度落後一週，我一定畢不了業。',k:1},{x:'等口試結果的這幾天，我根本撐不下去。',k:2},
+ {x:'同學報告做得比我好，我就是個失敗者。',k:3},{x:'被拒絕讓我很難過，但不代表我這個人沒有價值。',k:4}
+];
 const LEVELS=[
  {t:'廁所的門把',d:'第一級：先從最不噁心的開始'},
  {t:'馬桶的沖水按鈕（或把手）',d:'第二級'},
@@ -615,15 +634,15 @@ function saveLocal(){ls.set(TKEY,T);pushTeam();}
 const IDS=x=>Array.isArray(x)?x.filter(v=>typeof v==='string'&&v.length<24).slice(0,20):[];
 const NUMS=(x,max)=>Array.isArray(x)?x.map(v=>Math.max(0,Math.min(max,Math.round(+v||0)))).slice(0,10):[];
 function packState(){const p=T.pen;return{rev:T.rev||0,cr:T.createdAt||0,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,
- pen:p?[p.phase,p.pre,p.pred,p.post,p.act,p.surprise?1:0,p.lv,p.who||'']:null,toilet:T.toilet.slice(-8).map(x=>[x.pre,x.post,x.lv||0,x.w||'']),
+ pen:p?[p.phase,p.pre,p.pred,p.post,p.act,p.surprise?1:0,p.lv,p.who||'',p.q||0,p.qa==null?-1:p.qa]:null,lk:T.lk||0,toilet:T.toilet.slice(-8).map(x=>[x.pre,x.post,x.lv||0,x.w||'']),
  sa:T.startedAt||0,fa:T.finishedAt||0,sk:T.streak||0,ch:T.charges||0,sur:T.sur||0,hu:T.hush||0,me:T.meme||0,nd:T.nd||0,au:T.auth||0,rs:(T.roster||[]).slice(0,8),zs:T.zs||0,hit:T.hit||0,wa:T.wa||0,
  ap:(T.applied||[]).slice(-10),ss:(T.surSeen||[]).slice(-3),
  s1:Object.keys(T.s1.placed),s2:[T.s2.pins,T.s2.done?1:0],s3:T.s3.asked,s4:[T.s4.d,T.s4.open?1:0],s5:[T.s5.flip,T.s5.wrong]};}
 function adoptState(st){
  const n=(v,a,b)=>Math.max(a,Math.min(b,Math.round(+v||0)));
- T.rev=n(st.rev,0,1e9);T.stage=n(st.stage,0,6);T.strikes=n(st.strikes,0,3);T.locked=!!st.locked;
+ T.rev=n(st.rev,0,1e9);T.stage=n(st.stage,0,6);T.strikes=n(st.strikes,0,MAXS);T.locked=!!st.locked;
  const pe=Array.isArray(st.pen)?st.pen:null;
- T.pen=pe?{phase:n(pe[0],0,1),pre:n(pe[1],0,100),pred:PRED.includes(pe[2])?pe[2]:'',post:n(pe[3],0,100),act:ACT.includes(pe[4])?pe[4]:'',surprise:!!pe[5],lv:n(pe[6],0,5),who:/^[a-z0-9]{6,12}$/.test(pe[7]||'')?pe[7]:''}:null;
+ T.lk=Math.max(T.lk||0,n(st.lk,0,999));T.pen=pe?{q:n(pe[8],0,QZ.length-1),qa:n(pe[9],-1,4),phase:n(pe[0],-1,1),pre:n(pe[1],0,100),pred:PRED.includes(pe[2])?pe[2]:'',post:n(pe[3],0,100),act:ACT.includes(pe[4])?pe[4]:'',surprise:!!pe[5],lv:n(pe[6],0,5),who:/^[a-z0-9]{6,12}$/.test(pe[7]||'')?pe[7]:''}:null;
  if(T.locked&&!T.pen)T.locked=false;
  T.toilet=Array.isArray(st.toilet)?st.toilet.filter(Array.isArray).slice(-8).map(x=>({pre:n(x[0],0,100),post:n(x[1],0,100),lv:n(x[2],0,5),w:/^[a-z0-9]{6,12}$/.test(x[3]||'')?x[3]:''})):[];
  T.startedAt=+st.sa||0;T.finishedAt=+st.fa||0;T.streak=n(st.sk,0,2);T.charges=n(st.ch,0,2);T.sur=n(st.sur,0,2);T.hush=n(st.hu,0,1);T.meme=n(st.me,0,1);T.nd=n(st.nd,0,1);T.auth=n(st.au,0,1);
@@ -645,14 +664,14 @@ function pushTeam(){
  if(mode()==='host')return;
  if(!T){netSet({role:'lobby',ct:ctPres()});return;}
  netSet({role:'team',team:T.team,stage:T.stage,strikes:T.strikes,locked:T.locked?1:0,bonus:(T.pen&&T.pen.surprise)?1:0,sa:T.startedAt||0,fa:T.finishedAt||0,
-  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),me:T.my?[T.my.id,T.my.n,T.my.t]:null,wn:(T.locked&&T.pen)?whoName(T.pen.who):'',ct:ctPres(),st:packState()});
+  toilet:T.toilet.slice(-8).map(r=>[r.pre,r.post]),ch:T.charges||0,zaps:(T.zaps||[]).slice(-5),me:T.my?[T.my.id,T.my.n,T.my.t]:null,wn:(T.locked&&T.pen)?(T.pen.phase===-1?'#quiz':whoName(T.pen.who)):'',ct:ctPres(),st:packState()});
 }
 function good(){T.streak=(T.streak||0)+1;if(T.streak>=3){T.streak=0;if((T.charges||0)<2){T.charges=(T.charges||0)+1;showToast('good','連續答對 3 題！拿到一顆警報手榴彈！點上方紅色「手榴彈」，選一組丟過去，讓他們亮一盞警報燈');}}}
 function triggerTask(surprise){
  if(doneCount()>=members()){T.meme=1;T.locked=false;T.pen=null;return;}
- T.locked=true;penProxy=false;T.pen={phase:0,pre:70,pred:'',post:30,act:'',surprise:!!surprise,lv:Math.min(doneCount(),LEVELS.length-1),who:nextWho('')};
+ T.locked=true;penProxy=false;if(!surprise)T.lk=(T.lk||0)+1;T.pen={phase:surprise?0:-1,q:((T.team||1)*5+(T.lk||0)*4)%QZ.length,qa:-1,pre:70,pred:'',post:30,act:'',surprise:!!surprise,lv:0,who:nextWho('')};
 }
-function strike(z){if(!z)T.wa=(T.wa||0)+1;T.streak=0;T.strikes++;if(T.strikes>=3){T.strikes=3;triggerTask(false);sfx.alarm();}else sfx.bad();}
+function strike(z){if(!z)T.wa=(T.wa||0)+1;T.streak=0;T.strikes++;if(T.strikes>=MAXS){T.strikes=MAXS;triggerTask(false);sfx.alarm();}else sfx.bad();}
 
 function onTeamNet(){
  const peers=net.peers;const o={},counts={};let changed=false,adopted=false,lob=0,rosterCh=false;
@@ -695,12 +714,12 @@ function zapTeam(n){if(!T||!(T.charges>0))return;const v=others[n];if(!v||v.stag
 /* ================= team rendering ================= */
 function renderLift(){
  if(mode()==='host'||!T||T.stage===0){$('#lift').innerHTML=T&&T.stage===0?liftMini():'';return;}
- const al=[0,1,2].map(i=>`<i class="${i<T.strikes||T.locked?'on':''}"></i>`).join('');
+ const al=Array.from({length:MAXS},(_,i)=>`<i class="${i<T.strikes||T.locked?'on':''}"></i>`).join('');
  const sh=[1,2,3,4,5].map(i=>`<span class="${T.stage>i?'done':T.stage===i?'now':''}"></span>`).join('');
  const zapOk=T.charges>0&&net.state==='live'&&!T.locked;
  $('#lift').innerHTML=`<div class="lift"><div class="in"><div class="floor" aria-label="目前樓層">${FLOOR[T.stage]}</div>
   <div class="liftname"><b>第 ${T.team} 組</b><span>${esc(STAGES[T.stage])}</span></div>
-  <div class="alarms" aria-label="警報燈 ${T.locked?3:T.strikes} / 3"><small>ALARM</small>${al}</div>
+  <div class="alarms" aria-label="警報燈 ${T.locked?3:T.strikes} / ${MAXS}"><small>ALARM</small>${al}</div>
   <div class="liftbtns"><button class="remote ${zapOk?'ready':''}" data-a="zap" ${zapOk?'':'disabled'} aria-expanded="${zapOpen}">手榴彈 ×${T.charges||0}</button>
   <button class="iconbtn" data-a="file">個案檔案</button>
   <button class="iconbtn" data-a="rules">遊戲規則</button>
@@ -726,6 +745,7 @@ function renderLobby(){
   <p class="story">深夜十一點。個案 Stan 的檔案被鎖在他的心智大樓裡，主治諮商師只留下一句話：<b>「越往深處，越難觸及。」</b>你們要從<b>表層</b>出發，經過<b>中層</b>，在<b>樓梯間</b>找到解開 Stan 心智的線索，再走到<b>深層</b>，把他的個案概念化拼完整，才能從出口逃脫成功。</p>
   ${needRoom?`<form id="roomf" class="fld"><label for="roomcode">輸入大螢幕上的 4 位數房間代碼</label><div class="row"><input id="roomcode" class="codein" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="0000" value="${esc(ls.get('tower-room',''))}"><button class="btn green">進入</button></div><p class="hint">掃大螢幕上的 QR code 就不用輸入。</p></form>`
   :`<h2 style="font-size:1.1rem">你們是第幾組？</h2>
+  ${hostN?'':`<div class="netbad">還沒收到監控室的設定，所以先列出 8 組。${net.mode==='claude'?'你現在是在 Claude 的頁面裡開遊戲，只會和同樣在 Claude 裡打開的監控室同步；如果大螢幕用的是 GitHub 網址，手機也請改用 GitHub 網址（或掃大螢幕的 QR code）。':`請確認大螢幕的監控室已經打開，而且房間代碼和這裡一樣（這裡是房間 <b>${esc(ROOM)}</b>）。不一樣的話按下方「換房間」重新輸入。`}</div>`}
   <div class="teams">${Array.from({length:hostN||8},(_,i)=>i+1).map(n=>`<button data-a="pick" data-n="${n}">TEAM ${n}${teamCounts[n]?`<small style="display:block;font-size:.7rem;color:var(--exit)">${teamCounts[n]} 台已加入</small>`:''}</button>`).join('')}</div>
   <p class="hint">同一組的手機請選同一個組別，進度會自動同步。建議一台手機負責操作，其他人跟著看。${net.mode==='mqtt'?'房間 '+esc(ROOM)+'・':''}<span id="netinfo">${netText()}</span>${net.mode==='mqtt'?' <button class="iconbtn" data-a="chroom">換房間</button>':''}</p>`}
 </section>`;
@@ -737,7 +757,7 @@ function rulesHTML(big){const dur=mode()==='host'?H.dur:hostDur;
  <section><h3>目標</h3><p>從表層一路走到深層，拼出 Stan 的個案概念化，逃脫成功。</p></section>
  <section><h3>開始</h3><ul><li>全組報到 → 按「大家都到了」→ 輸入通行碼。</li><li>一人操作、大家討論，全組手機會同步。</li></ul></section>
  <section><h3>闖關</h3><ul><li>表層 → 中層 → 樓梯間（找線索）→ 深層 → 出口，答對就往下走。</li><li>忘了 Stan 的資料？按上方「個案檔案」。</li><li>${dur?'限時 '+dur+' 分鐘，':''}最快逃出的組有獎！</li></ul></section>
- <section><h3>驚喜任務</h3><ul><li>每層 3 盞警報燈，答錯亮 1 盞；<b>全亮就封鎖</b>，做完驚喜任務才能繼續。</li><li>照報到順序輪 1 人，用自己的手機去做，<b>全組畫面一起鎖住</b>等他回來。</li><li>做前寫預測，回來填感受。不想做可換下一位。</li><li><b>保密！</b>不給別組看、不告訴別組，回座位表情自然。</li></ul></section>
+ <section><h3>驚喜任務</h3><ul><li>每層 5 盞警報燈，答錯亮 1 盞；<b>全亮就封鎖</b>。</li><li>封鎖後全組先答一題選擇題：答對就解鎖，答錯就要做驚喜任務。</li><li>照報到順序輪 1 人，用自己的手機去做，<b>全組畫面一起鎖住</b>等他回來。</li><li>做前寫預測，回來填感受。不想做可換下一位。</li><li><b>保密！</b>不給別組看、不告訴別組，回座位表情自然。</li></ul></section>
  <section><h3>警報手榴彈</h3><ul><li>連對 3 題得 1 顆（最多 2 顆）；答錯就重新累積連對。</li><li>按上方紅色「手榴彈」選一組丟過去，<b>對方直接亮 1 盞警報燈</b>。</li><li>剛好讓別組 3 盞全亮，他們就得去做驚喜任務！</li></ul></section></article>`;}
 function stageHead(eb,title,story){return`<div class="eyebrow">${eb}</div><h1>${title}</h1><p class="story">${story}</p>`;}
 function caseFile(){return`<article class="file" aria-label="Stan 的個案檔案"><span class="stamp">CONFIDENTIAL</span>
@@ -900,10 +920,16 @@ function sHush(){const k=doneCount();const nid=k<members()?nextWho(''):'';const 
   <button class="btn green" data-a="hushok">知道了，繼續闖關</button></div></section>`;}
 function ladder(cur){return`<div class="ladder" aria-label="任務等級">${LEVELS.map((L,i)=>`<div class="${i<cur?'done':i===cur?'now':''}"><i>LV.${i+1}</i>${esc(L.t)}</div>`).join('')}</div>`;}
 function sLock(){
- const p=T.pen;const L=LEVELS[Math.min(p.lv||0,LEVELS.length-1)];const nm=whoName(p.who);
+ const p=T.pen;const nm=whoName(p.who);
  const mine=!p.who||p.who===MYID||penProxy||!rosterSorted().some(e=>e[0]===p.who);
+ if(p.phase===-1){const Q=QZ[p.q];
+  return`<section class="stage"><div class="lock siren"><div class="eyebrow" style="color:var(--led)">ALARM · LOCKDOWN</div><h1 style="color:var(--led)">警報！全組封鎖</h1>
+   <p class="story">${MAXS} 盞警報燈全亮了。全組一起討論，<b>答對這一題就能解除封鎖</b>；答錯的話，要派一個人去做驚喜任務。</p>
+   <div class="qz"><p class="qzq">這句想法屬於哪一種信念？</p><blockquote>「${esc(Q.x)}」</blockquote>
+   <div class="qzopts">${QKIND.map((k,i)=>`<button class="btn" data-a="qans" data-i="${i}">${k}</button>`).join('')}</div></div></div></section>`;}
+ const miss=p.qa>=0&&!p.surprise?(()=>{const Q=QZ[p.q];return`<div class="msg bad">答錯了！你們選了「${QKIND[p.qa]}」。「${esc(Q.x)}」是<b>${QKIND[Q.k]}</b>：${QWHY[Q.k]}</div>`;})():'';
  const corey=p.surprise?'':`<div class="corey"><p>吼～你是不是還沒跟 Corey 當好朋友！</p><img class="meme-img" src="${memeSrc(whoIdx(p))}" alt="梗圖"></div>`;
- const head=p.surprise?`<div class="eyebrow">SURPRISE · BONUS</div><h1 style="color:var(--amber)">驚喜任務</h1>`:`<div class="eyebrow" style="color:var(--led)">ALARM · LOCKDOWN</div><h1 style="color:var(--led)">警報！全組封鎖</h1>`+corey;
+ const head=p.surprise?`<div class="eyebrow">SURPRISE · BONUS</div><h1 style="color:var(--amber)">驚喜任務</h1>`:`<div class="eyebrow" style="color:var(--led)">ALARM · LOCKDOWN</div><h1 style="color:var(--led)">警報！全組封鎖</h1>`+miss+corey;
  const skip=`<button class="btn ghost" data-a="penskip">不想做，換下一位組員</button>`;
  if(!mine)return`<section class="stage"><div class="lock ${p.surprise?'bonus':'siren'}">${head}
   <div class="waitwho"><span class="dot" aria-hidden="true"></span><p class="who"><b>${esc(nm)}</b><br>${p.phase===0?'正在寫預測……':'已經出發去做任務了！'}</p></div>
@@ -912,14 +938,13 @@ function sLock(){
  const step0=`<div class="fld"><label for="pre">摸之前：你有多抗拒？</label><div class="rng"><input type="range" id="pre" min="0" max="100" step="5" value="${p.pre}" data-a="pen" data-k="pre"><output>${p.pre}</output></div></div>
   <div class="fld"><label for="pred">你預測，摸了會怎樣？</label><select class="sel" id="pred" data-a="pensel" data-k="pred"><option value="">選一個預測</option>${PRED.map(x=>`<option ${p.pred===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   <div class="row"><button class="btn red" data-a="pengo" ${p.pred?'':'disabled'}>預測完成，帶著手機出發</button>${skip}</div>`;
- const step1=`<div class="msg bad">任務進行中：<b>${esc(nm)}</b> 帶著手機，<b>偷偷</b>去摸一下「${esc(L.t)}」，然後洗手。不要讓別組知道你去做什麼！回來再填下面。</div>
+ const step1=`<div class="msg bad">任務進行中：<b>${esc(nm)}</b> 帶著手機，<b>偷偷</b>去摸一下「${TASK}」，然後洗手。不要讓別組知道你去做什麼！回來再填下面。</div>
   <div class="fld"><label for="post">摸完之後，實際感受有多不舒服？</label><div class="rng"><input type="range" id="post" min="0" max="100" step="5" value="${p.post}" data-a="pen" data-k="post"><output>${p.post}</output></div></div>
   <div class="fld"><label for="act">實際發生了什麼？</label><select class="sel" id="act" data-a="pensel" data-k="act"><option value="">選一個</option>${ACT.map(x=>`<option ${p.act===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   <div class="row"><button class="btn green" data-a="pendone" ${p.act?'':'disabled'}>回報結果${p.surprise?'':'，全組解除封鎖'}</button></div>`;
  return`<section class="stage"><div class="lock ${p.surprise?'bonus':'siren'}">${head}
   <p class="who">這次輪到：<b>${esc(nm)}</b>${p.who===MYID?'（你）':''}</p>
-  <p class="story">任務內容：摸一下<b>「${esc(L.t)}」</b>。噓，這是秘密，不要讓別組看到這個畫面。<br>每做一次任務就升一級，一次比一次難（${esc(L.d)}）。先寫下預測，再去做，回來比對。</p>
-  ${ladder(p.lv||0)}
+  <p class="story">任務內容：摸一下<b>「${TASK}」</b>。噓，這是秘密，不要讓別組看到這個畫面。<br>先寫下預測，再去做，回來比對。</p>
   ${p.phase===0?step0:step1}</div></section>`;
 }
 function sClass(){
@@ -1088,9 +1113,9 @@ function renderHost(){
  const won=[];for(let n=1;n<=H.n;n++){const v=teamView(n);if(v.stage>=6&&v.finishedAt)won.push([n,v.finishedAt]);}
  won.sort((a,b)=>a[1]-b[1]);
  const rows=Array.from({length:H.n},(_,i)=>{const n=i+1,v=teamView(n);
-  const st=v.locked?(v.bonus?'<b style="color:var(--amber)">大獲全勝・驚喜任務中'+(v.wn?'：'+esc(v.wn):'')+'</b>':'<b class="led">警報！'+(v.wn?esc(v.wn)+' 執行驚喜任務中':'驚喜任務中')+'</b>'):v.stage>=6?`<b style="color:var(--exit)">逃脫成功${v.startedAt&&v.finishedAt?' '+mmss(v.finishedAt-v.startedAt):''}</b>${won.findIndex(w=>+w[0]===n)>=0?` · 第 ${won.findIndex(w=>+w[0]===n)+1} 名`:''}`:v.stage===0?'<span class="dim">準備中</span>':esc(STAGES[v.stage]);
+  const st=v.locked?(v.bonus?'<b style="color:var(--amber)">大獲全勝・驚喜任務中'+(v.wn?'：'+esc(v.wn):'')+'</b>':'<b class="led">警報！'+(v.wn==='#quiz'?'全組解題中':v.wn?esc(v.wn)+' 執行驚喜任務中':'驚喜任務中')+'</b>'):v.stage>=6?`<b style="color:var(--exit)">逃脫成功${v.startedAt&&v.finishedAt?' '+mmss(v.finishedAt-v.startedAt):''}</b>${won.findIndex(w=>+w[0]===n)>=0?` · 第 ${won.findIndex(w=>+w[0]===n)+1} 名`:''}`:v.stage===0?'<span class="dim">準備中</span>':esc(STAGES[v.stage]);
   const segs=['表層','中層','樓梯間','深層','出口'].map((l,k)=>{const f=k+1;return`<div class="seg ${v.stage>f?'done':v.stage===f?'now':''}">${l}</div>`}).join('');
-  const al=[0,1,2].map(k=>`<i class="${v.locked||k<v.strikes?'on':''}"></i>`).join('');
+  const al=Array.from({length:MAXS},(_,k)=>`<i class="${v.locked||k<v.strikes?'on':''}"></i>`).join('');
   return`<div class="trow ${v.locked?'locked siren':''} ${v.stage>=6?'won':''}"><div class="tname"><span class="dot ${v.online?'on':''}"></span>TEAM ${n}<small>${v.online?(devTeam[n]||0)+' 台在線':'離線'}${v.mem?' · '+v.mem+' 人報到':''}${v.toilet&&v.toilet.length?' · 任務 '+v.toilet.length+' 次':''}</small></div>
    <div class="segs">${segs}</div><div class="tstat">${st}<div class="al">${al}</div>${v.charges?`<div class="hint" style="color:var(--led)">手榴彈 ×${v.charges}</div>`:''}${v.online?'':`<div class="manual"><button data-a="man" data-n="${n}" data-d="-1" aria-label="第${n}組手動退一層">◀</button><button data-a="man" data-n="${n}" data-d="1" aria-label="第${n}組手動進一層">▶</button></div>`}</div></div>`}).join('');
  const roomBar=net.mode==='mqtt'?`<div class="hostbar"><div><div class="hint">房間代碼</div><div class="code">${esc(ROOM)}</div><div class="row" style="margin-top:8px;gap:6px">${roomConfirm?`<span class="hint">同學要重新加入</span><button class="iconbtn" data-a="newroom">確定換</button><button class="iconbtn" data-a="roomn">取消</button>`:`<button class="iconbtn" data-a="newroom">換新代碼</button>`}</div></div><div><div class="hint">各組用手機掃描 QR code，或打開這個網址：</div><div class="url">${esc(joinUrl())}</div><div class="hint" style="margin-top:6px">連線狀態：${netText()}</div></div><div id="qr" aria-label="加入遊戲的 QR code"></div></div>`
@@ -1118,7 +1143,7 @@ function renderHost(){
   <div class="row" style="margin-top:24px"><button class="btn gold" data-a="showstart">梗圖大放送（頒獎典禮）</button><span class="hint">建議在遊戲結束後、揭曉實驗結果前播放。</span></div>
   ${H.reveal?`<div class="results"><div>${chart()}</div><div><h2 style="font-family:var(--f-title);font-size:1.4rem;margin-bottom:10px">揭曉：驚喜任務就是摸馬桶，其實是一個行為實驗</h2><ol>
    <li>讓我們卻步的，多半是「摸了一定很噁心、會生病」的<b>預測</b>，而不是馬桶本身。</li>
-   <li>任務一次比一次難：門把 → 沖水按鈕 → 馬桶蓋 → 馬桶座，這就是<b>漸進式作業</b>，也是暴露法的焦慮階層。</li>
+   <li>封鎖時的選擇題，是在練習<b>辨認非理性信念</b>：絕對化要求、災難化、低挫折容忍、整體性貶抑。認得出來，才有辦法駁斥或檢驗它。</li>
    <li>REBT 的 Ellis 會說：「我絕對不能碰髒東西」是要求式的非理性信念，要去駁斥它。</li>
    <li>Beck 的 CT 會把它當成<b>可以檢驗的假設</b>：先寫下預測，親自去試，再比對證據。</li>
    <li>Stan 對女性和社交的害怕也是同一種結構，所以他的作業是去試一次，而不是被說服。</li>
@@ -1197,7 +1222,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='sur2'){T.sur=2;sfx.open();saveT();renderTeam();return;}
  if(a==='sur3'){T.sur=0;triggerTask(true);saveT();renderTeam();window.scrollTo(0,0);return;}
  if(T.sur)return;
- if(T.locked&&!['pen','pensel','pengo','pendone','penskip','penproxy'].includes(a))return;
+ if(T.locked&&!['pen','pensel','pengo','pendone','penskip','penproxy','qans'].includes(a))return;
  if(a==='begin'){T.stage=1;T.startedAt=Date.now();sfx.open();saveT();renderTeam();window.scrollTo(0,0);return;}
  if(a==='next'){T.stage++;T.strikes=0;sfx.open();saveT();renderTeam();window.scrollTo(0,0);return;}
  if(a==='s1mon'){const pc=e.target.closest('.qfan .qpc');if(pc&&!s1sel){s1lift=s1lift===pc.dataset.id?null:pc.dataset.id;renderTeam();return;}if(s1sel)s1drop(s1sel,+el.dataset.s);return;}
@@ -1208,6 +1233,10 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
  if(a==='crack'){const right=DIALS.filter((d,i)=>T.s4.d[i]===d.ok).length;if(right===3){T.s4.open=true;sfx.open();good();}else{T.s4.msg={k:'bad',t:`喀。只有 ${right} 個轉盤對了。回頭看表層的自動想法和樓梯間問到的早年經驗。警報燈亮了一盞。`};strike();}saveT();renderTeam();return;}
  if(a==='flip'){if(T.s5.flip.length>=2)return;const idx=STR.map((_,i)=>i);for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}T.s5.flip=idx.slice(0,2);sfx.open();saveT();renderTeam();return;}
  if(a==='exp'){const i=+el.dataset.i;if(T.s5.wrong.includes(i))return;if(EXP[i].ok){T.stage=6;T.finishedAt=Date.now();sfx.open();good();}else{T.s5.wrong.push(i);strike();}saveT();renderTeam();window.scrollTo(0,0);return;}
+ if(a==='qans'){const p=T.pen;if(!p||p.phase!==-1)return;const i=+el.dataset.i,Q=QZ[p.q];
+  if(i===Q.k){T.locked=false;T.pen=null;T.strikes=0;sfx.open();showToast('good','答對了！這句是「'+QKIND[Q.k]+'」。解除封鎖，繼續闖關！');}
+  else{p.qa=i;p.phase=0;sfx.alarm();}
+  saveT();renderTeam();window.scrollTo(0,0);return;}
  if(a==='penskip'){const p=T.pen;if(!p)return;p.who=nextWho(p.who);p.phase=0;p.pred='';p.act='';p.pre=70;p.post=30;penProxy=false;saveT();renderTeam();window.scrollTo(0,0);return;}
  if(a==='penproxy'){penProxy=true;renderTeam();return;}
  if(a==='pengo'){T.pen.phase=1;saveT();renderTeam();return;}
