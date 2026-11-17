@@ -417,6 +417,16 @@ img{max-width:100%}
 }
 
 #toast{pointer-events:none}
+
+.qtray.one{grid-template-columns:minmax(0,1fr);gap:8px}
+.qtray.one .qcards .qpc{--w:116px}
+.qround{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:1rem}
+.qround .qrn{font-family:var(--f-led);color:var(--amber);letter-spacing:.1em;font-size:.82rem;flex:none}
+.qround b{color:var(--amber)}
+@media (max-width:620px){
+  .qtray.one .qcards .qpc{--w:min(100px,calc((100vw - 96px)/3));--band:22px}
+  .qround{font-size:.9rem;gap:4px 8px}
+}
 </style>
 </head>
 <body>
@@ -765,6 +775,9 @@ function sLogin(){
 function sCase(){return`<section class="stage"><div class="eyebrow">ACCESS GRANTED · 先讀個案檔案</div>${caseFile()}<div class="row"><button class="btn green" data-a="begin">讀完了，進入表層 ↓</button><span class="hint">遊戲中可以隨時按上方「個案檔案」再看一次。</span></div></section>`;}
 /* 第一關：證物卡拖到監視器，放對就疊在監視器旁邊（想法永遠在最上面） */
 const QT={at:{n:'想法',p:2},em:{n:'情緒',p:1},be:{n:'行為',p:0}};
+/* 一輪三張：情緒 → 行為 → 想法（想法最後放，放完剛好三張一起亮） */
+const QORDER=['em','be','at'];
+const QASK={em:'這三種<b>情緒</b>，各是在哪個場合出現的？',be:'這三種<b>行為</b>，各是在哪個場合出現的？',at:'最後是<b>想法</b>（自動想法）：這三句話，各是在哪個場合冒出來的？'};
 let s1sel=null,s1lift=null;
 function qcard(c,cls=''){const no=String(CARDS.indexOf(c)+1).padStart(2,'0');
  return`<div class="qpc ${c.t} ${cls}" data-id="${c.id}" style="--p:${QT[c.t].p}"><div class="qband">${QT[c.t].n}</div><div class="qbody"><div class="qno">證物 ${no}</div><p class="qtxt">${esc(c.x)}</p></div></div>`;}
@@ -773,16 +786,18 @@ function s1(){
  const mons=SITS.map((x,i)=>{const n=CARDS.filter(c=>c.s===i&&s.placed[c.id]).length;
   const fan=['be','em','at'].map(t=>{const c=CARDS.find(c=>c.s===i&&c.t===t);return s.placed[c.id]?qcard(c,s1lift===c.id?'lift':''):`<div class="qslot" style="--p:${QT[t].p}"><span>${QT[t].n}</span></div>`;}).join('');
   return`<div class="qmon ${n===3?'ok':''} ${s1sel?'pick':''}" data-a="s1mon" data-s="${i}" role="button" tabindex="0" aria-label="CAM 0${i+1}：${esc(x)}"><div class="qmon-h"><span>CAM 0${i+1}</span><span class="rec">● REC</span></div><div class="qsit">${esc(x)}</div><div class="qfan">${fan}</div></div>`;}).join('');
- const tray=['at','em','be'].map(t=>{const g=left.filter(c=>c.t===t);
-  return`<div class="qgrp ${t}"><div class="qgrp-h"><i aria-hidden="true"></i>${QT[t].n}<small>${g.length?'剩 '+g.length+' 張':''}</small></div><div class="qcards">${g.length?g.map(c=>qcard(c,s1sel===c.id?'sel':'')).join(''):'<span class="qempty">全部歸位 ✓</span>'}</div></div>`;}).join('');
- return`<section class="stage">${stageHead('表層 · 自動想法機房','三台監視器','機房的監視器拍到 Stan 在三個場合。把下面的<b>證物卡拖到它出現的監視器</b>，放對就疊上去，放錯會彈回來並亮一盞警報燈。也可以<b>先點卡片，再點監視器</b>。疊好的卡點一下可以抽出來看。')}
+ const rt=QORDER.find(t=>left.some(c=>c.t===t)),rn=QORDER.indexOf(rt)+1;
+ const tray=rt?`<div class="qround"><span class="qrn">第 ${rn} 輪 / 3</span><span>${QASK[rt]}</span></div>
+  <div class="qgrp ${rt}"><div class="qgrp-h"><i aria-hidden="true"></i>${QT[rt].n}<small>剩 ${left.filter(c=>c.t===rt).length} 張</small></div><div class="qcards">${left.filter(c=>c.t===rt).map(c=>qcard(c,s1sel===c.id?'sel':'')).join('')}</div></div>`:'';
+ return`<section class="stage">${stageHead('表層 · 自動想法機房','三台監視器','機房的監視器拍到 Stan 在三個場合。一次三張，把下面的<b>證物卡拖到它出現的監視器</b>：先情緒、再行為，最後是想法。放對就疊上去，放錯會彈回來並亮一盞警報燈。也可以<b>先點卡片，再點監視器</b>。')}
   <div class="qmons ${done?'done':''}">${mons}</div>
   ${done?`<div class="msg good">三台監視器都對上了。最上面那三張<b>想法</b>（自動想法）有一個共同的主題，你們看出來了嗎？帶著這個主題往下走。<ul style="margin:6px 0 0;padding-left:1.2em">${CARDS.filter(c=>c.t==='at').map(c=>`<li>${esc(c.x)}</li>`).join('')}</ul></div><div class="row"><button class="btn green" data-a="next">往下到中層 ↓</button></div>`
-   :`<div class="prog">證物卡 · 剩 ${left.length} 張</div><div class="qtray" id="s1hand">${tray}</div>`}</section>`;
+   :`<div class="qtray one" id="s1hand">${tray}</div>`}</section>`;
 }
 function s1drop(id,si){
  const c=CARDS.find(c=>c.id===id);s1sel=null;if(!c||T.s1.placed[id]||T.locked)return;
- if(c.s===si){T.s1.placed[id]=true;sfx.ok();good();showToast('good','放對了：這張是 CAM 0'+(si+1)+' 拍到的'+QT[c.t].n+'。',2200);saveT();renderTeam();return;}
+ if(c.s===si){T.s1.placed[id]=true;sfx.ok();good();const rest=CARDS.filter(x=>!T.s1.placed[x.id]);const roundDone=rest.length&&!rest.some(x=>x.t===c.t);
+  showToast('good',roundDone?'第 '+(QORDER.indexOf(c.t)+1)+' 輪完成！換下三張。':'放對了：這張是 CAM 0'+(si+1)+' 拍到的'+QT[c.t].n+'。',2200);saveT();renderTeam();return;}
  showToast('bad','這張不是 CAM 0'+(si+1)+' 拍到的：這句話比較像哪個場合會冒出來？警報燈亮了一盞。',3500);strike();saveT();renderTeam();
  const back=document.querySelector(`#s1hand .qpc[data-id="${id}"]`);if(back){back.classList.add('qshake');setTimeout(()=>back.classList.remove('qshake'),450);}
 }
